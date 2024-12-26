@@ -40,13 +40,55 @@ resource "aws_security_group" "security_group" {
  vpc_id = aws_vpc.main.id
 
  ingress {
-   from_port   = 0
-   to_port     = 0
-   protocol    = -1
-   self        = "false"
-   cidr_blocks = ["0.0.0.0/0"]
-   description = "any"
+   from_port   = 22
+   to_port     = 22
+   protocol    = "tcp"
+   cidr_blocks = ["81.41.129.51/32"]
+   description = "SSH Connection"
  }
+  ingress {
+   from_port   = 80
+   to_port     = 80
+   protocol    = "tcp"
+   cidr_blocks = ["0.0.0.0/0"]
+   description = "HTTP Connection"
+ }
+
+  # Grafana
+  ingress {
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Grafana"
+  }
+
+  # Kibana
+  ingress {
+    from_port   = 5601
+    to_port     = 5601
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Kibana"
+  }
+  
+  # MariaDB
+  ingress {
+   from_port   = 3306
+   to_port     = 3306
+   protocol    = "tcp"
+   cidr_blocks = ["81.41.129.51/32"]
+   description = "MariaDB Access"
+}
+
+  # Tráfico interno entre servicios
+  ingress {
+    from_port   = 0
+    to_port     = 65535
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/16"] # Asume que toda tu VPC usa esta CIDR
+    description = "Internal Traffic"
+  }
 
  egress {
    from_port   = 0
