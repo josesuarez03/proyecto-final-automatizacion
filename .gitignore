@@ -63,3 +63,6 @@ terraform.rc
 .DS_Store
 *.pub
 deployer-key
+
+__pycache__
+*.env
