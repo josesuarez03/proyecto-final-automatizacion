@@ -43,7 +43,7 @@ resource "aws_security_group" "security_group" {
    from_port   = 22
    to_port     = 22
    protocol    = "tcp"
-   cidr_blocks = ["81.41.129.51/32"]
+   cidr_blocks = [var.allowed_ip]
    description = "SSH Connection"
  }
   ingress {
@@ -77,7 +77,7 @@ resource "aws_security_group" "security_group" {
    from_port   = 3306
    to_port     = 3306
    protocol    = "tcp"
-   cidr_blocks = ["81.41.129.51/32"]
+   cidr_blocks = [var.allowed_ip]
    description = "MariaDB Access"
 }
 
