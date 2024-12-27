@@ -9,19 +9,19 @@ El flujo CI/CD incluirá la ejecución automática de pruebas tanto en el fronte
 
 ### Plan
 1. **Definición de Requisitos:**
-   - Crear un tablero en Trello para definir y asignar tareas.
+   - Crear un tablero en Trello para definir y asignar tareas. Puedes acceder al tablero de Trello [aquí](https://trello.com/invite/b/6766f2eafc5ae44ba2fbc325/ATTI2e6fca511adf2d3771369a1b60aebfbeCD013F7B/proyecto-final).
    - Identificar los requisitos de la infraestructura y los componentes de la aplicación.
 2. **Diseño de la Infraestructura:**
    - Arquitectura basada en contenedores utilizando Docker.
    - Terraform para la definición y despliegue de la infraestructura en AWS.
 3. **Configuración del Repositorio:**
    - Estructura del código organizada para frontend (React) y backend (Flask).
-   - Configuración inicial de pipelines en el proveedor de CI/CD elegido (e.g., GitHub Actions, Jenkins, o AWS CodePipeline).
+   - Configuración inicial de pipelines en el proveedor de CI/CD GitHub Actions.
 
 ---
 
 ### Code
-- **Frontend:** Desarrollado en React, servido mediante Apache.
+- **Frontend:** Desarrollado en React, servido mediante Nginx.
 - **Backend:** API RESTful implementada en Flask para manejar las peticiones del frontend hacia la base de datos.
 - **Infraestructura:** Configurada y gestionada mediante Terraform.
 
@@ -64,3 +64,7 @@ El flujo CI/CD incluirá la ejecución automática de pruebas tanto en el fronte
 ---
 
 ## Herramientas
+
+
+## Link
+- **Otro link al tablero de trello** [aqui](https://trello.com/b/fuOl9aA8/proyecto-final)
