@@ -19,5 +19,5 @@ variable "subnet_cidr" {
 variable "allowed_ip" {
   description = "IP address allowed to access restricted services"
   type        = string
-  default     = "81.41.129.51/32"  # Cambiar esto a tu IP por defecto
+  default     = "81.41.129.51/32"
 }
