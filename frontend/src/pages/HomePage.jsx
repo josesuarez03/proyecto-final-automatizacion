@@ -27,7 +27,7 @@ export const HomePage = () => {
             key={task.id}
             task={task}
             onDelete={() => deleteMutation.mutate(task.id)}
-            onToggle={toggleMutation.mutate}
+            onToggle={(id, completed) => toggleMutation.mutate({ id, completed })}
           />
         ))}
         {tasks.length === 0 && (

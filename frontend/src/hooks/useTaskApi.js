@@ -25,39 +25,56 @@ const api = {
 }
 
 export const useGetTasks = () => {
-  return useQuery(['tasks'], api.getTasks)
+  return useQuery({
+    queryKey: ['tasks'],
+    queryFn: api.getTasks
+  })
 }
 
 export const useGetTask = (id) => {
-  return useQuery(['task', id], () => 
-    api.getTasks().then(tasks => tasks.find(t => t.id === parseInt(id)))
-  )
+  return useQuery({
+    queryKey: ['task', id],
+    queryFn: () => api.getTasks().then(tasks => tasks.find(t => t.id === parseInt(id))),
+    enabled: !!id
+  })
 }
 
 export const useCreateTask = () => {
   const queryClient = useQueryClient()
-  return useMutation(api.createTask, {
-    onSuccess: () => queryClient.invalidateQueries(['tasks'])
+  return useMutation({
+    mutationFn: api.createTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    }
   })
 }
 
 export const useUpdateTask = () => {
   const queryClient = useQueryClient()
-  return useMutation(api.updateTask, {
-    onSuccess: () => queryClient.invalidateQueries(['tasks'])
+  return useMutation({
+    mutationFn: api.updateTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    }
   })
 }
 
 export const useDeleteTask = () => {
   const queryClient = useQueryClient()
-  return useMutation(api.deleteTask, {
-    onSuccess: () => queryClient.invalidateQueries(['tasks'])
+  return useMutation({
+    mutationFn: api.deleteTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    }
   })
 }
 
 export const useToggleTask = () => {
   const queryClient = useQueryClient()
-  return useMutation(api.toggleComplete, {
-    onSuccess: () => queryClient.invalidateQueries(['tasks'])
+  return useMutation({
+    mutationFn: ({ id, completed }) => api.toggleComplete(id, completed),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    }
   })
 }
