@@ -3,7 +3,7 @@ import { Trash2, Edit } from 'lucide-react'
 import PropTypes from 'prop-types'
 
 export const TaskCard = ({ task, onDelete, onToggle }) => {
-  const timestamp = new Date(task.timestamp).toLocaleString()
+  const timestamp = new Date(task.created_at).toLocaleString()
   
   return (
     <div className="bg-white p-4 rounded-lg shadow-md">
@@ -46,7 +46,7 @@ TaskCard.propTypes = {
     title: PropTypes.string.isRequired,
     description: PropTypes.string.isRequired,
     completed: PropTypes.bool.isRequired,
-    timestamp: PropTypes.string.isRequired
+    created_at: PropTypes.string.isRequired
   }).isRequired,
   onDelete: PropTypes.func.isRequired,
   onToggle: PropTypes.func.isRequired
