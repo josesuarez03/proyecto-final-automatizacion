@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from backend.src.models.task import Task
+from src.models.task import Task
 
 task_bp = Blueprint('task', __name__)
 
