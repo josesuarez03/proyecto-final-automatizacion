@@ -68,3 +68,6 @@ El flujo CI/CD incluirá la ejecución automática de pruebas tanto en el fronte
 
 ## Link
 - **Otro link al tablero de trello** [aqui](https://trello.com/b/fuOl9aA8/proyecto-final)
+
+## Referencias
+- [Ver referencias](resources.md)
