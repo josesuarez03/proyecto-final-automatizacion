@@ -1,7 +1,7 @@
 from flask import Flask, request
 from prometheus_client import make_wsgi_app, Counter, Histogram
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
-from backend.src.models.task import Task
+from src.models.task import Task
 from src.routes.routes import task_bp
 import time
 import logging
