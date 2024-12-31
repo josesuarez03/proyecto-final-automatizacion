@@ -1,27 +1,32 @@
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
-import { HomePage } from '../pages/HomePage'
-import { useGetTasks } from '../hooks/useTaskApi'
+import { CreateTaskPage } from '../pages/CreateTaskPage'
+import { useCreateTask } from '../hooks/useTaskApi'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-
-const mockTasks = [
-  { id: 1, title: 'Tarea 1', description: 'Descripción 1', completed: false },
-  { id: 2, title: 'Tarea 2', description: 'Descripción 2', completed: true }
-]
+import React from 'react'
 
 vi.mock('../hooks/useTaskApi', () => ({
-  useGetTasks: () => ({ data: mockTasks }),
-  useDeleteTask: () => ({ 
-    mutate: vi.fn()
-  }),
-  useToggleTask: () => ({
-    mutate: vi.fn()
-  })
+  useCreateTask: vi.fn(() => ({ mutate: vi.fn() }))
 }))
 
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom')
+  return {
+    ...actual,
+    useNavigate: vi.fn()
+  }
+})
+
 function renderWithProviders(component) {
-  const queryClient = new QueryClient()
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false
+      }
+    }
+  })
+  
   return render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
@@ -31,31 +36,27 @@ function renderWithProviders(component) {
   )
 }
 
-describe('HomePage', () => {
+describe('CreateTaskPage', () => {
   beforeEach(() => {
-    renderWithProviders(<HomePage />)
+    vi.clearAllMocks()
+    renderWithProviders(<CreateTaskPage />)
   })
 
   it('renders title correctly', () => {
-    expect(screen.getByText('Mis Tareas')).toBeInTheDocument()
+    const title = screen.getByText('Nueva Tarea')
+    expect(title).toBeInTheDocument()
   })
 
-  it('renders create task button', () => {
-    const createButton = screen.getByText('Nueva Tarea')
-    expect(createButton).toBeInTheDocument()
-    expect(createButton.closest('a')).toHaveAttribute('href', '/create')
+  it('renders form fields', () => {
+    const titleInput = screen.getByLabelText('Título')
+    const descriptionInput = screen.getByLabelText('Descripción')
+    
+    expect(titleInput).toBeInTheDocument()
+    expect(descriptionInput).toBeInTheDocument()
   })
 
-  it('renders task list', () => {
-    mockTasks.forEach(task => {
-      expect(screen.getByText(task.title)).toBeInTheDocument()
-      expect(screen.getByText(task.description)).toBeInTheDocument()
-    })
-  })
-
-  it('shows empty state when no tasks', () => {
-    vi.mocked(useGetTasks).mockReturnValueOnce({ data: [] })
-    renderWithProviders(<HomePage />)
-    expect(screen.getByText('No hay tareas pendientes')).toBeInTheDocument()
+  it('renders submit button', () => {
+    const submitButton = screen.getByText('Crear Tarea')
+    expect(submitButton).toBeInTheDocument()
   })
 })

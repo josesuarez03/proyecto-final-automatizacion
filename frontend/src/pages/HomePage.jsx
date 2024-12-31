@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { TaskCard } from '../components/TaskCard'
 import { useGetTasks, useDeleteTask, useToggleTask } from '../hooks/useTaskApi'
+import React from 'react'
 
 export const HomePage = () => {
   const { data: tasks = [] } = useGetTasks()
