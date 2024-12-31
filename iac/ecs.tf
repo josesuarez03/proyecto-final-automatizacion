@@ -1,4 +1,4 @@
-data "docker_registry_image" "api" {
+resource "docker_registry_image" "api" {
   name = "api:latest"
 }
 
@@ -15,6 +15,10 @@ resource "aws_ecr_repository" "api" {
   name = "api"
 }
 
+resource "aws_ecr_repository" "nginx" {
+  name = "nginx"
+}
+
 resource "docker_image" "api" {
   name = "${aws_ecr_repository.api.repository_url}:latest"
   build {
@@ -22,8 +26,19 @@ resource "docker_image" "api" {
   }
 }
 
+resource "docker_image" "nginx" {
+  name = "${aws_ecr_repository.nginx.repository_url}:latest"
+  build {
+    context = "./frontend"
+  }
+}
+
 resource "docker_registry_image" "api_push" {
   name = docker_image.api.name
+}
+
+resource "docker_registry_image" "nginx_push" {
+  name = docker_image.nginx.name
 }
 
 resource "aws_ecs_task_definition" "app_task" {
@@ -35,7 +50,7 @@ resource "aws_ecs_task_definition" "app_task" {
   container_definitions = jsonencode([
     {
       name  = "api"
-      image = "${aws_ecr_repository.api.repository_url}:latest"
+      image = "${aws_ecr_repository.api.repository_url}:latest"  # Usar el repositorio ECR de API
       environment = [
         { name = "DB_HOST", value = "db" },
         { name = "DB_USER", value = "admin" },
@@ -54,7 +69,7 @@ resource "aws_ecs_task_definition" "app_task" {
     },
     {
       name  = "nginx"
-      image = "nginx:latest"
+      image = "${aws_ecr_repository.nginx.repository_url}:latest"  # Usar el repositorio ECR de Nginx
       portMappings = [
         {
           containerPort = 80
