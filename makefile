@@ -24,7 +24,7 @@ help:
 	@echo "  ${GREEN}install${NC}   - Install all dependencies"
 	@echo "  ${GREEN}run-web${NC}   - Start React frontend"
 	@echo "  ${GREEN}run-api${NC}   - Start Flask backend with database"
-	@echo "  ${GREEN}test${NC}      - Run all tests"
+	@echo "  ${GREEN}test-flask${NC}      - Run all tests"
 	@echo "  ${GREEN}test-react${NC} - Run React tests"
 	@echo "  ${GREEN}coverage${NC}  - Generate test coverage report"
 	@echo "  ${GREEN}clean${NC}     - Remove temporary files"
