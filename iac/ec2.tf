@@ -1,12 +1,12 @@
 resource "aws_launch_template" "ecs_lt" {
   name_prefix   = "ecs-template"
-  image_id      = "ami-062c116e449466e7f"
+  image_id      = "ami-0e9085e60087ce171"
   instance_type = "t2.micro"
 
   key_name               = "ec2ecsglog"
   vpc_security_group_ids = [aws_security_group.security_group.id]
   iam_instance_profile {
-    name = "ecsInstanceRole"
+    name = aws_iam_instance_profile.ecs_instance_profile.name
   }
 
   block_device_mappings {
@@ -28,10 +28,10 @@ resource "aws_launch_template" "ecs_lt" {
 }
 
 resource "aws_autoscaling_group" "ecs_asg" {
-  vpc_zone_identifier = [aws_subnet.subnet.id, aws_subnet.subnet2.id]
+  vpc_zone_identifier = [aws_subnet.public_1.id, aws_subnet.public_2.id]
   desired_capacity    = 2
-  max_size            = 3
-  min_size            = 1
+  max_size           = 3
+  min_size           = 1
 
   launch_template {
     id      = aws_launch_template.ecs_lt.id
@@ -43,4 +43,50 @@ resource "aws_autoscaling_group" "ecs_asg" {
     value               = true
     propagate_at_launch = true
   }
+}
+
+resource "aws_iam_instance_profile" "ecs_instance_profile" {
+  name = "ecs-instance-profile"
+  role = aws_iam_role.ecs_instance_role.name
+}
+
+resource "aws_iam_role" "ecs_instance_role" {
+  name = "ecs-instance-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_instance_role_policy" {
+  role       = aws_iam_role.ecs_instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+}
+
+resource "aws_iam_role_policy" "ecs_instance_s3" {
+  name = "ecs_instance_s3_access"
+  role = aws_iam_role.ecs_instance_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.container_artifacts.arn,
+          "${aws_s3_bucket.container_artifacts.arn}/*"
+        ]
+      }
+    ]
+  })
 }
