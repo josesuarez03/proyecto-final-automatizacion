@@ -3,7 +3,7 @@ resource "aws_launch_template" "ecs_lt" {
   image_id      = "ami-0e9085e60087ce171"
   instance_type = "t2.micro"
 
-  key_name               = "ec2ecsglog"
+  key_name               = "deployer-key"
   vpc_security_group_ids = [aws_security_group.security_group.id]
   iam_instance_profile {
     name = aws_iam_instance_profile.ecs_instance_profile.name
@@ -25,6 +25,11 @@ resource "aws_launch_template" "ecs_lt" {
   }
 
   user_data = filebase64("${path.module}/ecs.sh")
+}
+
+resource "aws_key_pair" "deployer" {
+  key_name   = "deployer-key"
+  public_key = file("${path.module}/deployer-key.pub")
 }
 
 resource "aws_autoscaling_group" "ecs_asg" {
@@ -83,8 +88,8 @@ resource "aws_iam_role_policy" "ecs_instance_s3" {
           "s3:ListBucket"
         ]
         Resource = [
-          aws_s3_bucket.container_artifacts.arn,
-          "${aws_s3_bucket.container_artifacts.arn}/*"
+          aws_s3_bucket.artifacts.arn,
+          "${aws_s3_bucket.artifacts.arn}/*"
         ]
       }
     ]
