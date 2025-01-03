@@ -157,6 +157,11 @@ resource "aws_ecs_task_definition" "app_task" {
           sourceVolume  = "prometheus_data"
           containerPath = "/prometheus"
           readOnly      = false
+        },
+        {
+          sourceVolume  = "prometheus_config"
+          containerPath = "/etc/prometheus"
+          readOnly      = true
         }
       ]
       logConfiguration = {
@@ -184,6 +189,11 @@ resource "aws_ecs_task_definition" "app_task" {
           sourceVolume  = "grafana_data"
           containerPath = "/var/lib/grafana"
           readOnly      = false
+        },
+        {
+          sourceVolume  = "grafana_config"
+          containerPath = "/etc/grafana"
+          readOnly      = true
         }
       ]
       dependsOn = [{ containerName = "prometheus", condition = "START" }]
@@ -226,6 +236,11 @@ resource "aws_ecs_task_definition" "app_task" {
           sourceVolume  = "test_data"
           containerPath = "/usr/share/elasticsearch/data"
           readOnly      = false
+        },
+        {
+          sourceVolume  = "elasticsearch_config"
+          containerPath = "/usr/share/elasticsearch/config"
+          readOnly      = true
         }
       ]
       logConfiguration = {
@@ -257,6 +272,11 @@ resource "aws_ecs_task_definition" "app_task" {
           sourceVolume  = "ls_data"
           containerPath = "/usr/share/logstash/data"
           readOnly      = false
+        },
+        {
+          sourceVolume  = "logstash_config"
+          containerPath = "/usr/share/logstash/config"
+          readOnly      = true
         }
       ]
       dependsOn = [{ containerName = "elasticsearch", condition = "START" }]
@@ -285,6 +305,11 @@ resource "aws_ecs_task_definition" "app_task" {
           sourceVolume  = "kb_data"
           containerPath = "/usr/share/kibana/data"
           readOnly      = false
+        },
+        {
+          sourceVolume  = "kibana_config"
+          containerPath = "/usr/share/kibana/config"
+          readOnly      = true
         }
       ]
       dependsOn = [{ containerName = "elasticsearch", condition = "START" }]
@@ -338,6 +363,41 @@ resource "aws_ecs_task_definition" "app_task" {
     name = "kb_data"
     efs_volume_configuration {
       file_system_id = aws_efs_file_system.kb_data.id
+    }
+  }
+
+   volume {
+    name = "prometheus_config"
+    host {
+      source_path = "/opt/monitoring/prometheus"
+    }
+  }
+
+  volume {
+    name = "grafana_config"
+    host {
+      source_path = "/opt/monitoring/grafana"
+    }
+  }
+
+  volume {
+    name = "elasticsearch_config"
+    host {
+      source_path = "/opt/monitoring/elk/elasticsearch"
+    }
+  }
+
+  volume {
+    name = "logstash_config"
+    host {
+      source_path = "/opt/monitoring/elk/logstash"
+    }
+  }
+
+  volume {
+    name = "kibana_config"
+    host {
+      source_path = "/opt/monitoring/elk/kibana"
     }
   }
 }
