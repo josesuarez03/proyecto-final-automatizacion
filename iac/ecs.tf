@@ -7,13 +7,46 @@ resource "aws_ecs_cluster" "main" {
   }
 }
 
+resource "aws_ecs_service" "app_service" {
+  name            = "app-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.app_task.arn
+  desired_count   = 1
+  
+  deployment_minimum_healthy_percent = 50
+  deployment_maximum_percent = 200
+
+  launch_type = "EC2"
+  
+  ordered_placement_strategy {
+    type  = "spread"
+    field = "instanceId"
+  }
+
+  network_configuration {
+    subnets          = [aws_subnet.public_1.id, aws_subnet.public_2.id]
+    security_groups  = [aws_security_group.security_group.id]
+    assign_public_ip = false
+  }
+
+  deployment_controller {
+    type = "ECS"
+  }
+
+  depends_on = [aws_autoscaling_group.ecs_asg]
+
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
+}
+
 data "aws_ecr_repository" "docker" {
   name = "docker"
 }
 
 resource "aws_ecs_task_definition" "app_task" {
   family                = "app-task"
-  network_mode         = "bridge"
+  network_mode         = "awsvpc"
   execution_role_arn   = aws_iam_role.ecs_execution_role.arn
   task_role_arn        = aws_iam_role.ecs_task_role.arn
 
@@ -368,36 +401,71 @@ resource "aws_ecs_task_definition" "app_task" {
 
    volume {
     name = "prometheus_config"
-    host {
-      source_path = "/opt/monitoring/prometheus"
+    docker_volume_configuration {
+      scope         = "shared"
+      autoprovision = true
+      driver        = "local"
+      driver_opts = {
+        type   = "none"
+        device = "/opt/monitoring/prometheus"
+        o      = "bind"
+      }
     }
   }
 
   volume {
     name = "grafana_config"
-    host {
-      source_path = "/opt/monitoring/grafana"
+    docker_volume_configuration {
+      scope         = "shared"
+      autoprovision = true
+      driver        = "local"
+      driver_opts = {
+        type   = "none"
+        device = "/opt/monitoring/grafana"
+        o      = "bind"
+      }
     }
   }
 
   volume {
     name = "elasticsearch_config"
-    host {
-      source_path = "/opt/monitoring/elk/elasticsearch"
+    docker_volume_configuration {
+      scope         = "shared"
+      autoprovision = true
+      driver        = "local"
+      driver_opts = {
+        type   = "none"
+        device = "/opt/monitoring/elk/elasticsearch"
+        o      = "bind"
+      }
     }
   }
 
   volume {
     name = "logstash_config"
-    host {
-      source_path = "/opt/monitoring/elk/logstash"
+    docker_volume_configuration {
+      scope         = "shared"
+      autoprovision = true
+      driver        = "local"
+      driver_opts = {
+        type   = "none"
+        device = "/opt/monitoring/elk/logstash"
+        o      = "bind"
+      }
     }
   }
 
   volume {
     name = "kibana_config"
-    host {
-      source_path = "/opt/monitoring/elk/kibana"
+    docker_volume_configuration {
+      scope         = "shared"
+      autoprovision = true
+      driver        = "local"
+      driver_opts = {
+        type   = "none"
+        device = "/opt/monitoring/elk/kibanah"
+        o      = "bind"
+      }
     }
   }
 }
@@ -518,6 +586,17 @@ resource "aws_iam_role" "ecs_task_role" {
       }
     }]
   })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_execution_role_policy" {
+  role       = aws_iam_role.ecs_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+# Política adicional para acceder a ECR
+resource "aws_iam_role_policy_attachment" "ecs_execution_ecr_policy" {
+  role       = aws_iam_role.ecs_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
 resource "aws_cloudwatch_log_group" "ecs_logs" {
