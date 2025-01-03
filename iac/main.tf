@@ -42,34 +42,34 @@ resource "aws_s3_bucket_public_access_block" "artifacts" {
 }
 
 # Backend artifacts
-resource "aws_s3_object" "backend_source" {
-  bucket = aws_s3_bucket.artifacts.id
-  key    = "backend/source/api.tar.gz"
-  source = "${path.module}/../../backend/api.tar.gz"
-  etag   = filemd5("${path.module}/../../backend/api.tar.gz")
-}
+# resource "aws_s3_object" "backend_source" {
+#   bucket = aws_s3_bucket.artifacts.id
+#   key    = "backend/source/api.tar.gz"
+#   source = "../backend/api.tar.gz"
+#   etag   = filemd5("../backend/api.tar.gz")
+# }
 
 resource "aws_s3_object" "backend_requirements" {
   bucket = aws_s3_bucket.artifacts.id
   key    = "backend/requirements.txt"
-  source = "${path.module}/../../backend/requirements.txt"
-  etag   = filemd5("${path.module}/../../backend/requirements.txt")
+  source = "../backend/requirements.txt"
+  etag   = filemd5("../backend/requirements.txt")
 }
 
 resource "aws_s3_object" "backend_dockerfile" {
   bucket = aws_s3_bucket.artifacts.id
   key    = "backend/Dockerfile"
-  source = "${path.module}/../../backend/Dockerfile"
-  etag   = filemd5("${path.module}/../../backend/Dockerfile")
+  source = "../backend/Dockerfile"
+  etag   = filemd5("../backend/Dockerfile")
 }
 
 # Frontend artifacts
 resource "aws_s3_object" "frontend_dist" {
-  for_each = fileset("${path.module}/../../frontend/dist", "**/*")
+  for_each = fileset("../frontend/dist", "**/*")
   bucket   = aws_s3_bucket.artifacts.id
   key      = "frontend/dist/${each.value}"
-  source   = "${path.module}/../../frontend/dist/${each.value}"
-  etag     = filemd5("${path.module}/../../frontend/dist/${each.value}")
+  source   = "../frontend/dist/${each.value}"
+  etag     = filemd5("../frontend/dist/${each.value}")
   content_type = lookup({
     "html" = "text/html",
     "css"  = "text/css",
@@ -84,74 +84,74 @@ resource "aws_s3_object" "frontend_dist" {
 resource "aws_s3_object" "frontend_nginx_conf" {
   bucket = aws_s3_bucket.artifacts.id
   key    = "frontend/nginx.conf"
-  source = "${path.module}/../../frontend/nginx.conf"
-  etag   = filemd5("${path.module}/../../frontend/nginx.conf")
+  source = "../frontend/nginx.conf"
+  etag   = filemd5("../frontend/nginx.conf")
 }
 
 resource "aws_s3_object" "frontend_dockerfile" {
   bucket = aws_s3_bucket.artifacts.id
-  key    = "frontend/Dockerfile"
-  source = "${path.module}/../../frontend/Dockerfile"
-  etag   = filemd5("${path.module}/../../frontend/Dockerfile")
+  key    = "frontend/dockerfile"
+  source = "../frontend/dockerfile"
+  etag   = filemd5("../frontend/dockerfile")
 }
 
 # Monitoring artifacts
 resource "aws_s3_object" "prometheus_config" {
   bucket = aws_s3_bucket.artifacts.id
   key    = "monitoring/prometheus/prometheus.yml"
-  source = "${path.module}/../../prometheus.yml"
-  etag   = filemd5("${path.module}/../../prometheus.yml")
+  source = "../prometheus.yml"
+  etag   = filemd5("../prometheus.yml")
 }
 
 # Configuración de ELK Stack
 resource "aws_s3_object" "elasticsearch_config" {
   bucket = aws_s3_bucket.artifacts.id
   key    = "monitoring/elk/elasticsearch/elasticsearch.yml"
-  source = "${path.module}/../../elk-config/elasticsearch/elasticsearch.yml"
-  etag   = filemd5("${path.module}/../../elk-config/elasticsearch/elasticsearch.yml")
+  source = "../elk-config/elasticsearch/elasticsearch.yml"
+  etag   = filemd5("../elk-config/elasticsearch/elasticsearch.yml")
 }
 
 resource "aws_s3_object" "kibana_config" {
   bucket = aws_s3_bucket.artifacts.id
   key    = "monitoring/elk/kibana/kibana.yml"
-  source = "${path.module}/../../elk-config/kibana/kibana.yml"
-  etag   = filemd5("${path.module}/../../elk-config/kibana/kibana.yml")
+  source = "../elk-config/kibana/kibana.yml"
+  etag   = filemd5("../elk-config/kibana/kibana.yml")
 }
 
 resource "aws_s3_object" "logstash_config" {
   bucket = aws_s3_bucket.artifacts.id
   key    = "monitoring/elk/logstash/logstash.yml"
-  source = "${path.module}/../../elk-config/logstash/logstash.yml"
-  etag   = filemd5("${path.module}/../../elk-config/logstash/logstash.yml")
+  source = "../elk-config/logstash/logstash.yml"
+  etag   = filemd5("../elk-config/logstash/logstash.yml")
 }
 
 resource "aws_s3_object" "logstash_pipeline" {
   bucket = aws_s3_bucket.artifacts.id
   key    = "monitoring/elk/logstash/logstash.conf"
-  source = "${path.module}/../../elk-config/logstash/logstash.conf"
-  etag   = filemd5("${path.module}/../../elk-config/logstash/logstash.conf")
+  source = "../elk-config/logstash/logstash.conf"
+  etag   = filemd5("../elk-config/logstash/logstash.conf")
 }
 
 # Configuración de Grafana
 resource "aws_s3_object" "grafana_dashboard" {
   bucket = aws_s3_bucket.artifacts.id
   key    = "monitoring/grafana/dashboards/node-exporter-full.json"
-  source = "${path.module}/../../elk-config/grafana/dashboards/node-exporter-full.json"
-  etag   = filemd5("${path.module}/../../elk-config/grafana/dashboards/node-exporter-full.json")
+  source = "../elk-config/grafana/dashboards/node-exporter-full.json"
+  etag   = filemd5("../elk-config/grafana/dashboards/node-exporter-full.json")
 }
 
 resource "aws_s3_object" "grafana_dashboard_config" {
   bucket = aws_s3_bucket.artifacts.id
   key    = "monitoring/grafana/provisioning/dashboards/dashboard.yaml"
-  source = "${path.module}/../../elk-config/grafana/provisioning/dashboards/dashboard.yaml"
-  etag   = filemd5("${path.module}/../../elk-config/grafana/provisioning/dashboards/dashboard.yaml")
+  source = "../elk-config/grafana/provisioning/dashboards/dashboard.yaml"
+  etag   = filemd5("../elk-config/grafana/provisioning/dashboards/dashboard.yaml")
 }
 
 resource "aws_s3_object" "grafana_datasource" {
   bucket = aws_s3_bucket.artifacts.id
   key    = "monitoring/grafana/provisioning/datasources/datasource.yaml"
-  source = "${path.module}/../../elk-config/grafana/provisioning/datasources/datasource.yaml"
-  etag   = filemd5("${path.module}/../../elk-config/grafana/provisioning/datasources/datasource.yaml")
+  source = "../elk-config/grafana/provisioning/datasources/datasource.yaml"
+  etag   = filemd5("../elk-config/grafana/provisioning/datasources/datasource.yaml")
 }
 
 # Add bucket access to ECS task role
