@@ -1,7 +1,7 @@
 resource "aws_launch_template" "ecs_lt" {
   name_prefix   = "ecs-template"
   image_id      = "ami-0e9085e60087ce171"
-  instance_type = "t2.micro"
+  instance_type = "t3.large"
 
   key_name               = "deployer-key"
   vpc_security_group_ids = [aws_security_group.security_group.id]
