@@ -8,14 +8,15 @@ output "ecs_task_definition_arn" {
   description = "ARN of the ECS task definition"
 }
 
-output "ecr_repository_url" {
-  value       = aws_ecr_repository.api.repository_url
-  description = "URL of the ECR repository"
+# Outputs para referencia
+output "bucket_name" {
+  description = "Nombre del bucket de artefactos"
+  value       = aws_s3_bucket.artifacts.id
 }
 
-output "artifacts_bucket_name" {
-  value       = aws_s3_bucket.artifacts.id
-  description = "Name of the artifacts S3 bucket"
+output "bucket_arn" {
+  description = "ARN del bucket de artefactos"
+  value       = aws_s3_bucket.artifacts.arn
 }
 
 output "cloudwatch_log_group" {
