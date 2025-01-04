@@ -17,7 +17,9 @@ resource "aws_appautoscaling_target" "app_service_scaling" {
 
 resource "aws_appautoscaling_policy" "scale_up_policy" {
   name               = "scale-up-policy"
-  scaling_target_id  = aws_appautoscaling_target.app_service_scaling.id
+  resource_id        = aws_appautoscaling_target.app_service_scaling.resource_id
+  scalable_dimension = aws_appautoscaling_target.app_service_scaling.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.app_service_scaling.service_namespace
   policy_type        = "StepScaling"
 
   step_scaling_policy_configuration {
@@ -34,7 +36,9 @@ resource "aws_appautoscaling_policy" "scale_up_policy" {
 
 resource "aws_appautoscaling_policy" "scale_down_policy" {
   name               = "scale-down-policy"
-  scaling_target_id  = aws_appautoscaling_target.app_service_scaling.id
+  resource_id        = aws_appautoscaling_target.app_service_scaling.resource_id
+  scalable_dimension = aws_appautoscaling_target.app_service_scaling.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.app_service_scaling.service_namespace
   policy_type        = "StepScaling"
 
   step_scaling_policy_configuration {

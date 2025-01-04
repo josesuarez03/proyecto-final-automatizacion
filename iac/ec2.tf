@@ -47,23 +47,23 @@ resource "aws_autoscaling_group" "ecs_asg" {
     version = "$Latest"
   }
 
-  tags = [
-    {
-      key                 = "Name",
-      value               = "ecs-instance",
-      propagate_at_launch = true
-    },
-    {
-      key                 = "Environment",
-      value               = "production",
-      propagate_at_launch = true
-    },
-    {
-      key                 = "Project",
-      value               = "ecs",
-      propagate_at_launch = true
-    },
-  ]
+  tag {
+    key                 = "Name"
+    value               = "ecs-instance"
+    propagate_at_launch = true
+  }
+
+  tag {
+    key                 = "Environment"
+    value               = "production"
+    propagate_at_launch = true
+  }
+
+  tag {
+    key                 = "Project"
+    value               = "ecs"
+    propagate_at_launch = true
+  }
 
   protect_from_scale_in = true
 }
