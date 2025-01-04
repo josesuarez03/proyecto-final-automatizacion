@@ -102,8 +102,8 @@ resource "aws_ecs_task_definition" "app_task" {
     {
       name  = "nginx_exporter"
       image = "nginx/nginx-prometheus-exporter:latest"
-      cpu = 128
-      memory = 256
+      cpu = 64
+      memory = 128
       portMappings = [
         {
           containerPort = 9113
@@ -159,8 +159,8 @@ resource "aws_ecs_task_definition" "app_task" {
     {
       name  = "mariadb_exporter"
       image = "prom/mysqld-exporter:latest"
-      cpu = 128
-      memory = 256
+      cpu = 64
+      memory = 128
       environment = [
         { name = "DATA_SOURCE_NAME", value = "admin:1234@tcp(db:3306)/task_app" }
       ]
@@ -215,8 +215,8 @@ resource "aws_ecs_task_definition" "app_task" {
     {
       name  = "grafana"
       image = "grafana/grafana:latest"
-      cpu = 512
-      memory = 1024
+      cpu = 256
+      memory = 512
       portMappings = [
         {
           containerPort = 3000
@@ -248,8 +248,8 @@ resource "aws_ecs_task_definition" "app_task" {
     {
       name  = "elasticsearch"
       image = "elasticsearch:7.9.1"
-      cpu = 1024
-      memory = 3072
+      cpu = 512
+      memory = 1024
       portMappings = [
         {
           containerPort = 9200
@@ -267,8 +267,8 @@ resource "aws_ecs_task_definition" "app_task" {
         { name = "xpack.security.enabled", value = "false" },
         { name = "xpack.monitoring.enabled", value = "false" },
         { name = "cluster.name", value = "elasticsearch" },
-        { name = "bootstrap.memory_lock", value = "true" },
-        { name = "ES_JAVA_OPTS", value = "-Xms2g -Xmx2g" }
+        { name = "bootstrap.memory_lock", value = "false" },
+        { name = "ES_JAVA_OPTS", value = "-Xms512m -Xmx512m" }
       ]
       mountPoints = [
         {
@@ -294,8 +294,8 @@ resource "aws_ecs_task_definition" "app_task" {
     {
       name  = "logstash"
       image = "logstash:7.9.1"
-      cpu = 512
-      memory = 1024
+      cpu = 256
+      memory = 512
       portMappings = [
         {
           containerPort = 5044
@@ -331,8 +331,8 @@ resource "aws_ecs_task_definition" "app_task" {
     {
       name  = "kibana"
       image = "kibana:7.9.1"
-      cpu = 512
-      memory = 1024
+      cpu = 256
+      memory = 512
       portMappings = [
         {
           containerPort = 5601
