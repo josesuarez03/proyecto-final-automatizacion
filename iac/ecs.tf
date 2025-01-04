@@ -7,6 +7,48 @@ resource "aws_ecs_cluster" "main" {
   }
 }
 
+resource "aws_appautoscaling_target" "app_service_scaling" {
+  max_capacity       = 5
+  min_capacity       = 2
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.app_service.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+resource "aws_appautoscaling_policy" "scale_up_policy" {
+  name               = "scale-up-policy"
+  scaling_target_id  = aws_appautoscaling_target.app_service_scaling.id
+  policy_type        = "StepScaling"
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "ChangeInCapacity"
+    cooldown                = 60
+    metric_aggregation_type = "Average"
+
+    step_adjustment {
+      scaling_adjustment = 1
+      metric_interval_lower_bound = 0
+    }
+  }
+}
+
+resource "aws_appautoscaling_policy" "scale_down_policy" {
+  name               = "scale-down-policy"
+  scaling_target_id  = aws_appautoscaling_target.app_service_scaling.id
+  policy_type        = "StepScaling"
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "ChangeInCapacity"
+    cooldown                = 60
+    metric_aggregation_type = "Average"
+
+    step_adjustment {
+      scaling_adjustment = -1
+      metric_interval_upper_bound = 0
+    }
+  }
+}
+
 resource "aws_ecs_service" "app_service" {
   name            = "app-service"
   cluster         = aws_ecs_cluster.main.id
@@ -564,45 +606,6 @@ resource "aws_efs_mount_target" "kb_data" {
   file_system_id  = aws_efs_file_system.kb_data.id
   subnet_id       = count.index == 0 ? aws_subnet.public_1.id : aws_subnet.public_2.id
   security_groups = [aws_security_group.security_group.id]
-}
-
-resource "aws_iam_role" "ecs_execution_role" {
-  name = "ecs_execution_role"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
-      Principal = {
-        Service = "ecs-tasks.amazonaws.com"
-      }
-    }]
-  })
-}
-
-resource "aws_iam_role" "ecs_task_role" {
-  name = "ecs_task_role"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
-      Principal = {
-        Service = "ecs-tasks.amazonaws.com"
-      }
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_execution_role_policy" {
-  role       = aws_iam_role.ecs_execution_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
-
-# Política adicional para acceder a ECR
-resource "aws_iam_role_policy_attachment" "ecs_execution_ecr_policy" {
-  role       = aws_iam_role.ecs_execution_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
 resource "aws_cloudwatch_log_group" "ecs_logs" {

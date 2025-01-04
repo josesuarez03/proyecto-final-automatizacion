@@ -154,26 +154,3 @@ resource "aws_s3_object" "grafana_datasource" {
   etag   = filemd5("../elk-config/grafana/provisioning/datasources/datasource.yaml")
 }
 
-# Add bucket access to ECS task role
-resource "aws_iam_role_policy" "ecs_task_s3" {
-  name = "ecs_task_s3_access"
-  role = aws_iam_role.ecs_task_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:ListBucket"
-        ]
-        Resource = [
-          aws_s3_bucket.artifacts.arn,
-          "${aws_s3_bucket.artifacts.arn}/*"
-        ]
-      }
-    ]
-  })
-}
