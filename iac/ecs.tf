@@ -365,7 +365,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       ]
       mountPoints = [
         {
-          sourceVolume  = "prometheus-config"
+          sourceVolume  = "prometheus_config"
           containerPath = "/etc/prometheus"
           readOnly     = true
         }
@@ -386,7 +386,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       ]
       mountPoints = [
         {
-          sourceVolume  = "grafana-config"
+          sourceVolume  = "grafana_config"
           containerPath = "/etc/grafana"
           readOnly     = true
         },
@@ -431,7 +431,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
           readOnly     = false
         },
         {
-          sourceVolume  = "elasticsearch-config"
+          sourceVolume  = "elasticsearch_config"
           containerPath = "/usr/share/elasticsearch/config"
           readOnly     = true
         }
@@ -464,7 +464,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       ]
       mountPoints = [
         {
-          sourceVolume  = "logstash-config"
+          sourceVolume  = "logstash_config"
           containerPath = "/usr/share/logstash/config"
           readOnly     = true
         },
@@ -474,12 +474,12 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
           readOnly     = false
         },
         {
-          sourceVolume  = "nginx-logs"
+          sourceVolume  = "nginx_logs"
           containerPath = "/var/log/nginx"
           readOnly     = true
         },
         {
-          sourceVolume  = "mysql-logs"
+          sourceVolume  = "mysql_logs"
           containerPath = "/var/log/mysql"
           readOnly     = true
         }
@@ -500,7 +500,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       ]
       mountPoints = [
         {
-          sourceVolume  = "kibana-config"
+          sourceVolume  = "kibana_config"
           containerPath = "/usr/share/kibana/config"
           readOnly     = true
         },
