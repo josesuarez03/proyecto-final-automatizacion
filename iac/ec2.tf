@@ -5,7 +5,7 @@ resource "aws_key_pair" "ecs_key_pair" {
 
 resource "aws_launch_template" "ecs_lt" {
  name_prefix   = "ecs-template"
- image_id      = "ami-0e0568f9dc9d55f5d"
+ image_id      = "ami-01f5f2e96f603b15b"
  instance_type = "t3.large"
 
  key_name               = "ec2ecsglog"
