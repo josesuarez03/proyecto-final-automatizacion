@@ -32,7 +32,7 @@ resource "aws_ecs_cluster_capacity_providers" "example" {
 resource "aws_ecs_service" "ecs_service" {
  name            = "my-ecs-service"
  cluster         = aws_ecs_cluster.ecs_cluster.id
- task_definition = aws_ecs_task_definition.ecs_task_definition.arn
+ task_definition = aws_ecs_task_definition.monitoring_stack.arn
  desired_count   = 2
 
  network_configuration {
@@ -209,7 +209,34 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       }
     }
   }
-}
+
+   volume {
+    name = "nginx-logs"
+    docker_volume_configuration {
+      scope         = "shared"
+      autoprovision = true
+      driver        = "local"
+      driver_opts = {
+        type   = "none"
+        device = "/opt/monitoring/nginx/logs"
+        o      = "bind"
+      }
+    }
+  }
+
+  volume {
+    name = "mysql-logs"
+    docker_volume_configuration {
+      scope         = "shared"
+      autoprovision = true
+      driver        = "local"
+      driver_opts = {
+        type   = "none"
+        device = "/opt/monitoring/mysql/logs"
+        o      = "bind"
+      }
+    }
+  }
 
   container_definitions = jsonencode([
     {
