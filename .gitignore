@@ -63,6 +63,7 @@ terraform.rc
 .DS_Store
 *.pub
 deployer-key
+ec2ecsglog
 
 __pycache__
 *.env
