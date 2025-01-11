@@ -112,13 +112,8 @@ resource "aws_efs_mount_target" "monitoring_mount_2" {
   security_groups = [aws_security_group.security_group.id]
 }
 
-# Usar data sources para referenciar los repositorios ECR existentes
-data "aws_ecr_repository" "api" {
-  name = "docker/api"  # Ajusta este nombre según tu repositorio actual
-}
-
-data "aws_ecr_repository" "nginx" {
-  name = "docker/nginx"  # Ajusta este nombre según tu repositorio actual
+data "aws_ecr_repository" "docker" {
+  name = "docker"
 }
 
 # Task Definition
@@ -241,7 +236,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
   container_definitions = jsonencode([
     {
       name      = "api"
-      image = "${data.aws_ecr_repository.api.repository_url}:latest"
+      image = "${data.aws_ecr_repository.docker.repository_url}:api"
       cpu       = 256
       memory    = 512
       essential = true
@@ -262,7 +257,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     },
     {
       name      = "nginx"
-      image = "${data.aws_ecr_repository.nginx.repository_url}:latest"
+      image = "${data.aws_ecr_repository.docker.repository_url}:nginx"
       cpu       = 256
       memory    = 512
       essential = true
