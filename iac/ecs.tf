@@ -140,54 +140,76 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     }
   }
 
-  volume {
-    name      = "nginx-logs"
-    host {
-      source_path = "/opt/monitoring/nginx/logs"
+   volume {
+    name = "prometheus_config"
+    docker_volume_configuration {
+      scope         = "shared"
+      autoprovision = true
+      driver        = "local"
+      driver_opts = {
+        type   = "none"
+        device = "/opt/monitoring/prometheus"
+        o      = "bind"
+      }
     }
   }
 
   volume {
-    name      = "mysql-logs"
-    host {
-      source_path = "/opt/monitoring/mysql/logs"
+    name = "grafana_config"
+    docker_volume_configuration {
+      scope         = "shared"
+      autoprovision = true
+      driver        = "local"
+      driver_opts = {
+        type   = "none"
+        device = "/opt/monitoring/grafana"
+        o      = "bind"
+      }
     }
   }
 
   volume {
-    name      = "prometheus-config"
-    host {
-      source_path = "/opt/monitoring/prometheus"
+    name = "elasticsearch_config"
+    docker_volume_configuration {
+      scope         = "shared"
+      autoprovision = true
+      driver        = "local"
+      driver_opts = {
+        type   = "none"
+        device = "/opt/monitoring/elk/elasticsearch"
+        o      = "bind"
+      }
     }
   }
 
   volume {
-    name      = "grafana-config"
-    host {
-      source_path = "/opt/monitoring/grafana"
+    name = "logstash_config"
+    docker_volume_configuration {
+      scope         = "shared"
+      autoprovision = true
+      driver        = "local"
+      driver_opts = {
+        type   = "none"
+        device = "/opt/monitoring/elk/logstash"
+        o      = "bind"
+      }
     }
   }
 
   volume {
-    name      = "elasticsearch-config"
-    host {
-      source_path = "/opt/monitoring/elk/elasticsearch"
+    name = "kibana_config"
+    docker_volume_configuration {
+      scope         = "shared"
+      autoprovision = true
+      driver        = "local"
+      driver_opts = {
+        type   = "none"
+        device = "/opt/monitoring/elk/kibanah"
+        o      = "bind"
+      }
     }
   }
-
-  volume {
-    name      = "logstash-config"
-    host {
-      source_path = "/opt/monitoring/elk/logstash"
-    }
-  }
-
-  volume {
-    name      = "kibana-config"
-    host {
-      source_path = "/opt/monitoring/elk/kibana"
-    }
-  }
+}
 
   container_definitions = jsonencode([
     {
