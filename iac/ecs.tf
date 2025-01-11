@@ -1,309 +1,374 @@
-resource "aws_ecs_cluster" "main" {
-  name = "my-ecs-cluster"
+resource "aws_ecs_cluster" "ecs_cluster" {
+ name = "my-ecs-cluster"
+}
 
-  setting {
-    name  = "containerInsights"
-    value = "enabled"
+resource "aws_ecs_capacity_provider" "ecs_capacity_provider" {
+ name = "test1"
+
+ auto_scaling_group_provider {
+   auto_scaling_group_arn = aws_autoscaling_group.ecs_asg.arn
+
+   managed_scaling {
+     maximum_scaling_step_size = 1000
+     minimum_scaling_step_size = 1
+     status                    = "ENABLED"
+     target_capacity           = 3
+   }
+ }
+}
+
+resource "aws_ecs_cluster_capacity_providers" "example" {
+ cluster_name = aws_ecs_cluster.ecs_cluster.name
+
+ capacity_providers = [aws_ecs_capacity_provider.ecs_capacity_provider.name]
+
+ default_capacity_provider_strategy {
+   base              = 1
+   weight            = 100
+   capacity_provider = aws_ecs_capacity_provider.ecs_capacity_provider.name
+ }
+}
+
+resource "aws_ecs_service" "ecs_service" {
+ name            = "my-ecs-service"
+ cluster         = aws_ecs_cluster.ecs_cluster.id
+ task_definition = aws_ecs_task_definition.ecs_task_definition.arn
+ desired_count   = 2
+
+ network_configuration {
+   subnets         = [aws_subnet.public_1.id, aws_subnet.public_2.id]
+   security_groups = [aws_security_group.security_group.id]
+ }
+
+ force_new_deployment = true
+ placement_constraints {
+   type = "distinctInstance"
+ }
+
+ triggers = {
+   redeployment = timestamp()
+ }
+
+ capacity_provider_strategy {
+   capacity_provider = aws_ecs_capacity_provider.ecs_capacity_provider.name
+   weight            = 100
+ }
+
+ load_balancer {
+    target_group_arn = aws_lb_target_group.ecs_tg_80.arn
+    container_name   = "nginx"
+    container_port   = 80
+  }
+
+  # Grafana
+  load_balancer {
+    target_group_arn = aws_lb_target_group.ecs_tg_3000.arn
+    container_name   = "grafana"
+    container_port   = 3000
+  }
+
+  # Kibana
+  load_balancer {
+    target_group_arn = aws_lb_target_group.ecs_tg_5601.arn
+    container_name   = "kibana"
+    container_port   = 5601
+  }
+
+  # MariaDB
+  load_balancer {
+    target_group_arn = aws_lb_target_group.ecs_tg_3306.arn
+    container_name   = "mariadb"
+    container_port   = 3306
+  }
+
+  depends_on = [
+    aws_autoscaling_group.ecs_asg,
+    aws_lb_listener.http,
+    aws_lb_listener.grafana,
+    aws_lb_listener.kibana,
+    aws_lb_listener.mariadb
+  ]
+}
+
+# Crear los sistemas de archivos EFS
+resource "aws_efs_file_system" "monitoring_data" {
+  creation_token = "monitoring-data"
+  encrypted      = true
+
+  tags = {
+    Name = "MonitoringData"
   }
 }
 
-resource "aws_appautoscaling_target" "app_service_scaling" {
-  max_capacity       = 5
-  min_capacity       = 2
-  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.app_service.name}"
-  scalable_dimension = "ecs:service:DesiredCount"
-  service_namespace  = "ecs"
+resource "aws_efs_mount_target" "monitoring_mount_1" {
+  file_system_id  = aws_efs_file_system.monitoring_data.id
+  subnet_id       = aws_subnet.public_1.id
+  security_groups = [aws_security_group.security_group.id]
 }
 
-resource "aws_appautoscaling_policy" "scale_up_policy" {
-  name               = "scale-up-policy"
-  resource_id        = aws_appautoscaling_target.app_service_scaling.resource_id
-  scalable_dimension = aws_appautoscaling_target.app_service_scaling.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.app_service_scaling.service_namespace
-  policy_type        = "StepScaling"
+resource "aws_efs_mount_target" "monitoring_mount_2" {
+  file_system_id  = aws_efs_file_system.monitoring_data.id
+  subnet_id       = aws_subnet.public_2.id
+  security_groups = [aws_security_group.security_group.id]
+}
 
-  step_scaling_policy_configuration {
-    adjustment_type         = "ChangeInCapacity"
-    cooldown                = 60
-    metric_aggregation_type = "Average"
+# Usar data sources para referenciar los repositorios ECR existentes
+data "aws_ecr_repository" "api" {
+  name = "docker/api"  # Ajusta este nombre según tu repositorio actual
+}
 
-    step_adjustment {
-      scaling_adjustment = 1
-      metric_interval_lower_bound = 0
+data "aws_ecr_repository" "nginx" {
+  name = "docker/nginx"  # Ajusta este nombre según tu repositorio actual
+}
+
+# Task Definition
+resource "aws_ecs_task_definition" "monitoring_stack" {
+  family                   = "monitoring-stack"
+  requires_compatibilities = ["EC2"]
+  network_mode            = "awsvpc"
+  cpu                     = "4096"  # 4 vCPU for t3.large
+  memory                  = "8192"  # 8GB for t3.large
+  execution_role_arn      = aws_iam_role.ecs_execution_role.arn
+  task_role_arn           = aws_iam_role.ecs_task_role.arn
+
+  # Configuración de volúmenes
+  volume {
+    name = "efs-monitoring"
+    efs_volume_configuration {
+      file_system_id = aws_efs_file_system.monitoring_data.id
+      root_directory = "/"
     }
   }
-}
 
-resource "aws_appautoscaling_policy" "scale_down_policy" {
-  name               = "scale-down-policy"
-  resource_id        = aws_appautoscaling_target.app_service_scaling.resource_id
-  scalable_dimension = aws_appautoscaling_target.app_service_scaling.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.app_service_scaling.service_namespace
-  policy_type        = "StepScaling"
-
-  step_scaling_policy_configuration {
-    adjustment_type         = "ChangeInCapacity"
-    cooldown                = 60
-    metric_aggregation_type = "Average"
-
-    step_adjustment {
-      scaling_adjustment = -1
-      metric_interval_upper_bound = 0
+  volume {
+    name      = "nginx-logs"
+    host {
+      source_path = "/opt/monitoring/nginx/logs"
     }
   }
-}
 
-resource "aws_ecs_service" "app_service" {
-  name            = "app-service"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.app_task.arn
-  desired_count   = 2
-
-  force_new_deployment = true
-  
-  placement_constraints {
-    type = "distinctInstance"
-  }
-  
-  deployment_minimum_healthy_percent = 50
-  deployment_maximum_percent = 200
-
-  launch_type = "EC2"
-  
-  ordered_placement_strategy {
-    type  = "spread"
-    field = "instanceId"
+  volume {
+    name      = "mysql-logs"
+    host {
+      source_path = "/opt/monitoring/mysql/logs"
+    }
   }
 
-  network_configuration {
-    subnets          = [aws_subnet.public_1.id, aws_subnet.public_2.id]
-    security_groups  = [aws_security_group.security_group.id]
-    assign_public_ip = false
+  volume {
+    name      = "prometheus-config"
+    host {
+      source_path = "/opt/monitoring/prometheus"
+    }
   }
 
-  deployment_controller {
-    type = "ECS"
+  volume {
+    name      = "grafana-config"
+    host {
+      source_path = "/opt/monitoring/grafana"
+    }
   }
 
-  depends_on = [aws_autoscaling_group.ecs_asg]
-
-  lifecycle {
-    ignore_changes = [desired_count]
+  volume {
+    name      = "elasticsearch-config"
+    host {
+      source_path = "/opt/monitoring/elk/elasticsearch"
+    }
   }
-}
 
-data "aws_ecr_repository" "docker" {
-  name = "docker"
-}
+  volume {
+    name      = "logstash-config"
+    host {
+      source_path = "/opt/monitoring/elk/logstash"
+    }
+  }
 
-resource "aws_ecs_task_definition" "app_task" {
-  family                = "app-task"
-  network_mode         = "awsvpc"
-  execution_role_arn   = aws_iam_role.ecs_execution_role.arn
-  task_role_arn        = aws_iam_role.ecs_task_role.arn
+  volume {
+    name      = "kibana-config"
+    host {
+      source_path = "/opt/monitoring/elk/kibana"
+    }
+  }
 
   container_definitions = jsonencode([
     {
-      name  = "api"
-      image = "${data.aws_ecr_repository.docker.repository_url}:api"
-      cpu = 512
-      memory = 1024
+      name      = "api"
+      image = "${data.aws_ecr_repository.api.repository_url}:latest"
+      cpu       = 256
+      memory    = 512
+      essential = true
       environment = [
-        { name = "DB_HOST", value = "db" },
+        { name = "DB_HOST", value = "localhost" },
         { name = "DB_USER", value = "admin" },
         { name = "DB_PASSWORD", value = "1234" },
         { name = "DB_NAME", value = "task_app" }
       ]
-      dependsOn = [{ containerName = "db", condition = "START" }]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.ecs_logs.name
+          "awslogs-group"         = "/ecs/monitoring-stack"
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "api"
         }
       }
     },
     {
-      name  = "nginx"
-      image = "${data.aws_ecr_repository.docker.repository_url}:nginx"
-      cpu = 256
-      memory = 512
+      name      = "nginx"
+      image = "${data.aws_ecr_repository.nginx.repository_url}:latest"
+      cpu       = 256
+      memory    = 512
+      essential = true
       portMappings = [
         {
           containerPort = 80
-          hostPort      = 80
+          hostPort     = 80
+          protocol     = "tcp"
         }
       ]
-      dependsOn = [{ containerName = "api", condition = "START" }]
+      mountPoints = [
+        {
+          sourceVolume  = "nginx-logs"
+          containerPath = "/var/log/nginx"
+          readOnly     = false
+        }
+      ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.ecs_logs.name
+          "awslogs-group"         = "/ecs/monitoring-stack"
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "nginx"
         }
       }
     },
     {
-      name  = "nginx_exporter"
-      image = "nginx/nginx-prometheus-exporter:latest"
-      cpu = 64
-      memory = 128
+      name      = "nginx-exporter"
+      image     = "nginx/nginx-prometheus-exporter:latest"
+      cpu       = 128
+      memory    = 256
+      essential = false
       portMappings = [
         {
           containerPort = 9113
-          hostPort      = 9113
+          hostPort     = 9113
+          protocol     = "tcp"
         }
       ]
       environment = [
-        { name = "NGINX_STATUS_URL", value = "http://nginx/metrics" }
+        { name = "NGINX_STATUS_URL", value = "http://localhost/metrics" }
       ]
-      dependsOn = [{ containerName = "nginx", condition = "START" }]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.ecs_logs.name
-          "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "nginx-exporter"
-        }
-      }
     },
     {
-      name  = "db"
-      image = "mariadb:10.6"
-      cpu = 512
-      memory = 1024
+      name      = "mariadb"
+      image     = "mariadb:10.6"
+      cpu       = 512
+      memory    = 1024
+      essential = true
+      portMappings = [
+        {
+          containerPort = 3306
+          hostPort     = 3306
+          protocol     = "tcp"
+        }
+      ]
       environment = [
         { name = "MARIADB_ROOT_PASSWORD", value = "root" },
         { name = "MYSQL_PASSWORD", value = "1234" },
         { name = "MYSQL_DATABASE", value = "task_app" },
         { name = "MYSQL_USER", value = "admin" }
       ]
-      portMappings = [
-        {
-          containerPort = 3306
-          hostPort      = 3306
-        }
-      ]
       mountPoints = [
         {
-          sourceVolume  = "db_data"
+          sourceVolume  = "efs-monitoring"
           containerPath = "/var/lib/mysql"
-          readOnly      = false
+          readOnly     = false
+        },
+        {
+          sourceVolume  = "mysql-logs"
+          containerPath = "/var/log/mysql"
+          readOnly     = false
         }
       ]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.ecs_logs.name
-          "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "db"
-        }
-      }
     },
     {
-      name  = "mariadb_exporter"
-      image = "prom/mysqld-exporter:latest"
-      cpu = 64
-      memory = 128
-      environment = [
-        { name = "DATA_SOURCE_NAME", value = "admin:1234@tcp(db:3306)/task_app" }
-      ]
+      name      = "mariadb-exporter"
+      image     = "prom/mysqld-exporter:latest"
+      cpu       = 128
+      memory    = 256
+      essential = false
       portMappings = [
         {
           containerPort = 9104
-          hostPort      = 9104
+          hostPort     = 9104
+          protocol     = "tcp"
         }
       ]
-      dependsOn = [{ containerName = "db", condition = "START" }]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.ecs_logs.name
-          "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "mariadb-exporter"
-        }
-      }
+      environment = [
+        { name = "DATA_SOURCE_NAME", value = "admin:1234@tcp(localhost:3306)/task_app" }
+      ]
     },
     {
-      name  = "prometheus"
-      image = "prom/prometheus:latest"
-      cpu = 512
-      memory = 1024
+      name      = "prometheus"
+      image     = "prom/prometheus:latest"
+      cpu       = 256
+      memory    = 512
+      essential = true
       portMappings = [
         {
           containerPort = 9090
-          hostPort      = 9090
+          hostPort     = 9090
+          protocol     = "tcp"
         }
       ]
       mountPoints = [
         {
-          sourceVolume  = "prometheus_data"
-          containerPath = "/prometheus"
-          readOnly      = false
-        },
-        {
-          sourceVolume  = "prometheus_config"
+          sourceVolume  = "prometheus-config"
           containerPath = "/etc/prometheus"
-          readOnly      = true
+          readOnly     = true
         }
       ]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.ecs_logs.name
-          "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "prometheus"
-        }
-      }
     },
     {
-      name  = "grafana"
-      image = "grafana/grafana:latest"
-      cpu = 256
-      memory = 512
+      name      = "grafana"
+      image     = "grafana/grafana:latest"
+      cpu       = 256
+      memory    = 512
+      essential = true
       portMappings = [
         {
           containerPort = 3000
-          hostPort      = 3000
+          hostPort     = 3000
+          protocol     = "tcp"
         }
       ]
       mountPoints = [
         {
-          sourceVolume  = "grafana_data"
-          containerPath = "/var/lib/grafana"
-          readOnly      = false
+          sourceVolume  = "grafana-config"
+          containerPath = "/etc/grafana"
+          readOnly     = true
         },
         {
-          sourceVolume  = "grafana_config"
-          containerPath = "/etc/grafana"
-          readOnly      = true
+          sourceVolume  = "efs-monitoring"
+          containerPath = "/var/lib/grafana"
+          readOnly     = false
         }
       ]
-      dependsOn = [{ containerName = "prometheus", condition = "START" }]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.ecs_logs.name
-          "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "grafana"
-        }
-      }
     },
     {
-      name  = "elasticsearch"
-      image = "elasticsearch:7.9.1"
-      cpu = 512
-      memory = 1024
+      name      = "elasticsearch"
+      image     = "elasticsearch:7.9.1"
+      cpu       = 1024
+      memory    = 2048
+      essential = true
       portMappings = [
         {
           containerPort = 9200
-          hostPort      = 9200
+          hostPort     = 9200
+          protocol     = "tcp"
         },
         {
           containerPort = 9300
-          hostPort      = 9300
+          hostPort     = 9300
+          protocol     = "tcp"
         }
       ]
       environment = [
@@ -313,306 +378,99 @@ resource "aws_ecs_task_definition" "app_task" {
         { name = "xpack.security.enabled", value = "false" },
         { name = "xpack.monitoring.enabled", value = "false" },
         { name = "cluster.name", value = "elasticsearch" },
-        { name = "bootstrap.memory_lock", value = "false" },
-        { name = "ES_JAVA_OPTS", value = "-Xms512m -Xmx512m" }
+        { name = "bootstrap.memory_lock", value = "true" }
       ]
       mountPoints = [
         {
-          sourceVolume  = "test_data"
+          sourceVolume  = "efs-monitoring"
           containerPath = "/usr/share/elasticsearch/data"
-          readOnly      = false
+          readOnly     = false
         },
         {
-          sourceVolume  = "elasticsearch_config"
+          sourceVolume  = "elasticsearch-config"
           containerPath = "/usr/share/elasticsearch/config"
-          readOnly      = true
+          readOnly     = true
         }
       ]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.ecs_logs.name
-          "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "elasticsearch"
+      ulimits = [
+        {
+          name      = "memlock"
+          softLimit = -1
+          hardLimit = -1
         }
-      }
+      ]
     },
     {
-      name  = "logstash"
-      image = "logstash:7.9.1"
-      cpu = 256
-      memory = 512
+      name      = "logstash"
+      image     = "logstash:7.9.1"
+      cpu       = 512
+      memory    = 1024
+      essential = true
       portMappings = [
         {
           containerPort = 5044
-          hostPort      = 5044
+          hostPort     = 5044
+          protocol     = "tcp"
         },
         {
           containerPort = 9600
-          hostPort      = 9600
+          hostPort     = 9600
+          protocol     = "tcp"
         }
       ]
       mountPoints = [
         {
-          sourceVolume  = "ls_data"
-          containerPath = "/usr/share/logstash/data"
-          readOnly      = false
+          sourceVolume  = "logstash-config"
+          containerPath = "/usr/share/logstash/config"
+          readOnly     = true
         },
         {
-          sourceVolume  = "logstash_config"
-          containerPath = "/usr/share/logstash/config"
-          readOnly      = true
+          sourceVolume  = "efs-monitoring"
+          containerPath = "/usr/share/logstash/data"
+          readOnly     = false
+        },
+        {
+          sourceVolume  = "nginx-logs"
+          containerPath = "/var/log/nginx"
+          readOnly     = true
+        },
+        {
+          sourceVolume  = "mysql-logs"
+          containerPath = "/var/log/mysql"
+          readOnly     = true
         }
       ]
-      dependsOn = [{ containerName = "elasticsearch", condition = "START" }]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.ecs_logs.name
-          "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "logstash"
-        }
-      }
     },
     {
-      name  = "kibana"
-      image = "kibana:7.9.1"
-      cpu = 256
-      memory = 512
+      name      = "kibana"
+      image     = "kibana:7.9.1"
+      cpu       = 256
+      memory    = 512
+      essential = true
       portMappings = [
         {
           containerPort = 5601
-          hostPort      = 5601
+          hostPort     = 5601
+          protocol     = "tcp"
         }
       ]
       mountPoints = [
         {
-          sourceVolume  = "kb_data"
-          containerPath = "/usr/share/kibana/data"
-          readOnly      = false
+          sourceVolume  = "kibana-config"
+          containerPath = "/usr/share/kibana/config"
+          readOnly     = true
         },
         {
-          sourceVolume  = "kibana_config"
-          containerPath = "/usr/share/kibana/config"
-          readOnly      = true
+          sourceVolume  = "efs-monitoring"
+          containerPath = "/usr/share/kibana/data"
+          readOnly     = false
         }
       ]
-      dependsOn = [{ containerName = "elasticsearch", condition = "START" }]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.ecs_logs.name
-          "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "kibana"
-        }
-      }
     }
   ])
 
-  volume {
-    name = "db_data"
-    efs_volume_configuration {
-      file_system_id = aws_efs_file_system.db_data.id
-    }
-  }
-
-  volume {
-    name = "grafana_data"
-    efs_volume_configuration {
-      file_system_id = aws_efs_file_system.grafana_data.id
-    }
-  }
-
-  volume {
-    name = "prometheus_data"
-    efs_volume_configuration {
-      file_system_id = aws_efs_file_system.prometheus_data.id
-    }
-  }
-
-  volume {
-    name = "test_data"
-    efs_volume_configuration {
-      file_system_id = aws_efs_file_system.test_data.id
-    }
-  }
-
-  volume {
-    name = "ls_data"
-    efs_volume_configuration {
-      file_system_id = aws_efs_file_system.ls_data.id
-    }
-  }
-
-  volume {
-    name = "kb_data"
-    efs_volume_configuration {
-      file_system_id = aws_efs_file_system.kb_data.id
-    }
-  }
-
-   volume {
-    name = "prometheus_config"
-    docker_volume_configuration {
-      scope         = "shared"
-      autoprovision = true
-      driver        = "local"
-      driver_opts = {
-        type   = "none"
-        device = "/opt/monitoring/prometheus"
-        o      = "bind"
-      }
-    }
-  }
-
-  volume {
-    name = "grafana_config"
-    docker_volume_configuration {
-      scope         = "shared"
-      autoprovision = true
-      driver        = "local"
-      driver_opts = {
-        type   = "none"
-        device = "/opt/monitoring/grafana"
-        o      = "bind"
-      }
-    }
-  }
-
-  volume {
-    name = "elasticsearch_config"
-    docker_volume_configuration {
-      scope         = "shared"
-      autoprovision = true
-      driver        = "local"
-      driver_opts = {
-        type   = "none"
-        device = "/opt/monitoring/elk/elasticsearch"
-        o      = "bind"
-      }
-    }
-  }
-
-  volume {
-    name = "logstash_config"
-    docker_volume_configuration {
-      scope         = "shared"
-      autoprovision = true
-      driver        = "local"
-      driver_opts = {
-        type   = "none"
-        device = "/opt/monitoring/elk/logstash"
-        o      = "bind"
-      }
-    }
-  }
-
-  volume {
-    name = "kibana_config"
-    docker_volume_configuration {
-      scope         = "shared"
-      autoprovision = true
-      driver        = "local"
-      driver_opts = {
-        type   = "none"
-        device = "/opt/monitoring/elk/kibanah"
-        o      = "bind"
-      }
-    }
-  }
-}
-
-resource "aws_efs_file_system" "db_data" {
-  creation_token = "db-data"
-  encrypted      = true
   tags = {
-    Name = "db-data"
+    Name = "MonitoringStack"
   }
 }
 
-resource "aws_efs_file_system" "grafana_data" {
-  creation_token = "grafana-data"
-  encrypted      = true
-  tags = {
-    Name = "grafana-data"
-  }
-}
-
-resource "aws_efs_file_system" "prometheus_data" {
-  creation_token = "prometheus-data"
-  encrypted      = true
-  tags = {
-    Name = "prometheus-data"
-  }
-}
-
-resource "aws_efs_file_system" "test_data" {
-  creation_token = "test-data"
-  encrypted      = true
-  tags = {
-    Name = "test-data"
-  }
-}
-
-resource "aws_efs_file_system" "ls_data" {
-  creation_token = "ls-data"
-  encrypted      = true
-  tags = {
-    Name = "ls-data"
-  }
-}
-
-resource "aws_efs_file_system" "kb_data" {
-  creation_token = "kb-data"
-  encrypted      = true
-  tags = {
-    Name = "kb-data"
-  }
-}
-
-resource "aws_efs_mount_target" "db_data" {
-  count           = 2
-  file_system_id  = aws_efs_file_system.db_data.id
-  subnet_id       = count.index == 0 ? aws_subnet.public_1.id : aws_subnet.public_2.id
-  security_groups = [aws_security_group.security_group.id]
-}
-
-resource "aws_efs_mount_target" "grafana_data" {
-  count           = 2
-  file_system_id  = aws_efs_file_system.grafana_data.id
-  subnet_id       = count.index == 0 ? aws_subnet.public_1.id : aws_subnet.public_2.id
-  security_groups = [aws_security_group.security_group.id]
-}
-
-resource "aws_efs_mount_target" "prometheus_data" {
-  count           = 2
-  file_system_id  = aws_efs_file_system.prometheus_data.id
-  subnet_id       = count.index == 0 ? aws_subnet.public_1.id : aws_subnet.public_2.id
-  security_groups = [aws_security_group.security_group.id]
-}
-
-resource "aws_efs_mount_target" "test_data" {
-  count           = 2
-  file_system_id  = aws_efs_file_system.test_data.id
-  subnet_id       = count.index == 0 ? aws_subnet.public_1.id : aws_subnet.public_2.id
-  security_groups = [aws_security_group.security_group.id]
-}
-
-resource "aws_efs_mount_target" "ls_data" {
-  count           = 2
-  file_system_id  = aws_efs_file_system.ls_data.id
-  subnet_id       = count.index == 0 ? aws_subnet.public_1.id : aws_subnet.public_2.id
-  security_groups = [aws_security_group.security_group.id]
-}
-
-resource "aws_efs_mount_target" "kb_data" {
-  count           = 2
-  file_system_id  = aws_efs_file_system.kb_data.id
-  subnet_id       = count.index == 0 ? aws_subnet.public_1.id : aws_subnet.public_2.id
-  security_groups = [aws_security_group.security_group.id]
-}
-
-resource "aws_cloudwatch_log_group" "ecs_logs" {
-  name              = "/ecs/app-logs"
-  retention_in_days = 30
-}
