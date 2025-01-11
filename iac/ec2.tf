@@ -1,3 +1,8 @@
+resource "aws_key_pair" "ecs_key_pair" {
+  key_name   = "ec2ecsglog"
+  public_key = file("${path.module}/deployer-key.pub")
+}
+
 resource "aws_launch_template" "ecs_lt" {
  name_prefix   = "ecs-template"
  image_id      = "ami-0e0568f9dc9d55f5d"
@@ -5,9 +10,9 @@ resource "aws_launch_template" "ecs_lt" {
 
  key_name               = "ec2ecsglog"
  vpc_security_group_ids = [aws_security_group.security_group.id]
- iam_instance_profile {
-   name = "ecsInstanceRole"
- }
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ecs_instance_profile.name
+  }
 
  block_device_mappings {
    device_name = "/dev/xvda"
