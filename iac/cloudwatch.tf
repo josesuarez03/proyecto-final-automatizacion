@@ -12,7 +12,7 @@ resource "aws_cloudwatch_metric_alarm" "ecs_cpu" {
   alarm_actions       = [aws_sns_topic.alerts.arn]
   
   dimensions = {
-    ClusterName = aws_ecs_cluster.main.name
+    ClusterName = aws_ecs_cluster.ecs_cluster.name
   }
 }
 
@@ -30,7 +30,7 @@ resource "aws_cloudwatch_metric_alarm" "ecs_memory" {
   alarm_actions       = [aws_sns_topic.alerts.arn]
   
   dimensions = {
-    ClusterName = aws_ecs_cluster.main.name
+    ClusterName = aws_ecs_cluster.ecs_cluster.name
   }
 }
 
@@ -48,7 +48,7 @@ resource "aws_cloudwatch_metric_alarm" "ecs_running_tasks" {
   alarm_actions       = [aws_sns_topic.alerts.arn]
   
   dimensions = {
-    ClusterName = aws_ecs_cluster.main.name
+    ClusterName = aws_ecs_cluster.ecs_cluster.name
   }
 }
 
@@ -91,7 +91,7 @@ resource "aws_cloudwatch_dashboard" "ecs" {
 
         properties = {
           metrics = [
-            ["AWS/ECS", "CPUUtilization", "ClusterName", aws_ecs_cluster.main.name]
+            ["AWS/ECS", "CPUUtilization", "ClusterName", aws_ecs_cluster.ecs_cluster.name]
           ]
           period = 300
           stat   = "Average"
@@ -108,7 +108,7 @@ resource "aws_cloudwatch_dashboard" "ecs" {
 
         properties = {
           metrics = [
-            ["AWS/ECS", "MemoryUtilization", "ClusterName", aws_ecs_cluster.main.name]
+            ["AWS/ECS", "MemoryUtilization", "ClusterName", aws_ecs_cluster.ecs_cluster.name]
           ]
           period = 300
           stat   = "Average"
@@ -118,4 +118,106 @@ resource "aws_cloudwatch_dashboard" "ecs" {
       }
     ]
   })
+}
+
+# Log group principal para el stack de monitoreo
+resource "aws_cloudwatch_log_group" "monitoring_stack" {
+  name              = "/ecs/monitoring-stack"
+  retention_in_days = 14
+
+  tags = {
+    Environment = "production"
+    Application = "monitoring-stack"
+  }
+}
+
+# Log groups específicos para cada servicio
+resource "aws_cloudwatch_log_group" "api" {
+  name              = "/ecs/monitoring-stack/api"
+  retention_in_days = 14
+
+  tags = {
+    Service     = "api"
+    Environment = "production"
+  }
+}
+
+resource "aws_cloudwatch_log_group" "nginx" {
+  name              = "/ecs/monitoring-stack/nginx"
+  retention_in_days = 14
+
+  tags = {
+    Service     = "nginx"
+    Environment = "production"
+  }
+}
+
+resource "aws_cloudwatch_log_group" "mariadb" {
+  name              = "/ecs/monitoring-stack/mariadb"
+  retention_in_days = 14
+
+  tags = {
+    Service     = "mariadb"
+    Environment = "production"
+  }
+}
+
+resource "aws_cloudwatch_log_group" "prometheus" {
+  name              = "/ecs/monitoring-stack/prometheus"
+  retention_in_days = 14
+
+  tags = {
+    Service     = "prometheus"
+    Environment = "production"
+  }
+}
+
+resource "aws_cloudwatch_log_group" "grafana" {
+  name              = "/ecs/monitoring-stack/grafana"
+  retention_in_days = 14
+
+  tags = {
+    Service     = "grafana"
+    Environment = "production"
+  }
+}
+
+resource "aws_cloudwatch_log_group" "elasticsearch" {
+  name              = "/ecs/monitoring-stack/elasticsearch"
+  retention_in_days = 14
+
+  tags = {
+    Service     = "elasticsearch"
+    Environment = "production"
+  }
+}
+
+resource "aws_cloudwatch_log_group" "logstash" {
+  name              = "/ecs/monitoring-stack/logstash"
+  retention_in_days = 14
+
+  tags = {
+    Service     = "logstash"
+    Environment = "production"
+  }
+}
+
+resource "aws_cloudwatch_log_group" "kibana" {
+  name              = "/ecs/monitoring-stack/kibana"
+  retention_in_days = 14
+
+  tags = {
+    Service     = "kibana"
+    Environment = "production"
+  }
+}
+
+resource "aws_cloudwatch_log_group" "exporters" {
+  name              = "/ecs/monitoring-stack/exporters"
+  retention_in_days = 14
+
+  tags = {
+    Service     = "exporters"
+    Environment = "production"
+  }
 }
