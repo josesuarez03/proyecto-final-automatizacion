@@ -1,69 +1,150 @@
 resource "aws_launch_template" "ecs_lt" {
-  name_prefix   = "ecs-template"
-  image_id      = "ami-04f87c366aa353bc5"
-  instance_type = "t3.large"
+ name_prefix   = "ecs-template"
+ image_id      = "ami-062c116e449466e7f"
+ instance_type = "t3.large"
 
-  network_interfaces {
-    associate_public_ip_address = true
-    security_groups            = [aws_security_group.security_group.id]
-  }
+ key_name               = "ec2ecsglog"
+ vpc_security_group_ids = [aws_security_group.security_group.id]
+ iam_instance_profile {
+   name = "ecsInstanceRole"
+ }
 
-  iam_instance_profile {
-    name = aws_iam_instance_profile.ecs_instance_profile.name
-  }
+ block_device_mappings {
+   device_name = "/dev/xvda"
+   ebs {
+     volume_size = 30
+     volume_type = "gp2"
+   }
+ }
 
-  block_device_mappings {
-    device_name = "/dev/xvda"
-    ebs {
-      volume_size = 100
-      volume_type = "gp3"
-      iops        = 3000
-    }
-  }
+ tag_specifications {
+   resource_type = "instance"
+   tags = {
+     Name = "ecs-instance"
+   }
+ }
 
-  tag_specifications {
-    resource_type = "instance"
-    tags = {
-      Name = "ecs-instance"
-    }
-  }
-
-  user_data = base64encode(file("${path.module}/ecs.sh"))
-
-  monitoring {
-    enabled = true
-  }
+ user_data = filebase64("${path.module}/ecs.sh")
 }
 
 resource "aws_autoscaling_group" "ecs_asg" {
-  name                = "ecs-asg"
-  vpc_zone_identifier = [aws_subnet.public_1.id, aws_subnet.public_2.id]
-  desired_capacity    = 2
-  max_size           = 4
-  min_size           = 1
+ vpc_zone_identifier = [aws_subnet.public_1.id, aws_subnet.public_2.id]
+ desired_capacity    = 2
+ max_size            = 3
+ min_size            = 1
 
-  launch_template {
-    id      = aws_launch_template.ecs_lt.id
-    version = "$Latest"
-  }
+ launch_template {
+   id      = aws_launch_template.ecs_lt.id
+   version = "$Latest"
+ }
 
-  tag {
-    key                 = "Name"
-    value               = "ecs-instance"
-    propagate_at_launch = true
-  }
+ tag {
+   key                 = "AmazonECSManaged"
+   value               = true
+   propagate_at_launch = true
+ }
+}
 
-  tag {
-    key                 = "Environment"
-    value               = "production"
-    propagate_at_launch = true
-  }
+resource "aws_lb" "ecs_alb" {
+ name               = "ecs-alb"
+ internal           = false
+ load_balancer_type = "application"
+ security_groups    = [aws_security_group.security_group.id]
+ subnets            = [aws_subnet.public_1.id, aws_subnet.public_2.id]
 
-  tag {
-    key                 = "Project"
-    value               = "ecs"
-    propagate_at_launch = true
-  }
+ tags = {
+   Name = "ecs-alb"
+ }
+}
 
-  protect_from_scale_in = true
+resource "aws_lb_listener" "http" {
+ load_balancer_arn = aws_lb.ecs_alb.arn
+ port              = 80
+ protocol          = "HTTP"
+
+ default_action {
+   type             = "forward"
+   target_group_arn = aws_lb_target_group.ecs_tg_80.arn
+ }
+}
+
+resource "aws_lb_listener" "grafana" {
+ load_balancer_arn = aws_lb.ecs_alb.arn
+ port              = 3000
+ protocol          = "HTTP"
+
+ default_action {
+   type             = "forward"
+   target_group_arn = aws_lb_target_group.ecs_tg_3000.arn
+ }
+}
+
+resource "aws_lb_listener" "kibana" {
+ load_balancer_arn = aws_lb.ecs_alb.arn
+ port              = 5601
+ protocol          = "HTTP"
+
+ default_action {
+   type             = "forward"
+   target_group_arn = aws_lb_target_group.ecs_tg_5601.arn
+ }
+}
+
+resource "aws_lb_listener" "mariadb" {
+ load_balancer_arn = aws_lb.ecs_alb.arn
+ port              = 3306
+ protocol          = "TCP"
+
+ default_action {
+   type             = "forward"
+   target_group_arn = aws_lb_target_group.ecs_tg_3306.arn
+ }
+}
+
+resource "aws_lb_target_group" "ecs_tg_80" {
+ name        = "ecs-tg-80"
+ port        = 80
+ protocol    = "HTTP"
+ target_type = "ip"
+ vpc_id      = aws_vpc.main.id
+
+ health_check {
+   path = "/"
+ }
+}
+
+resource "aws_lb_target_group" "ecs_tg_3000" {
+ name        = "ecs-tg-3000"
+ port        = 3000
+ protocol    = "HTTP"
+ target_type = "ip"
+ vpc_id      = aws_vpc.main.id
+
+ health_check {
+   path = "/api/health"
+ }
+}
+
+resource "aws_lb_target_group" "ecs_tg_5601" {
+ name        = "ecs-tg-5601"
+ port        = 5601
+ protocol    = "HTTP"
+ target_type = "ip"
+ vpc_id      = aws_vpc.main.id
+
+ health_check {
+   path = "/api/status"
+ }
+}
+
+resource "aws_lb_target_group" "ecs_tg_3306" {
+ name        = "ecs-tg-3306"
+ port        = 3306
+ protocol    = "TCP"
+ target_type = "ip"
+ vpc_id      = aws_vpc.main.id
+
+ health_check {
+   protocol = "TCP"
+ }
 }
