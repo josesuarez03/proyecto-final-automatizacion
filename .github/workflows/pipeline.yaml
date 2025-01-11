@@ -46,19 +46,19 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Build and push Docker image for nginx (frontend)
+       - name: Build and push Docker image for nginx (frontend)
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY-nginx:$IMAGE_TAG ./frontend
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY-nginx:$IMAGE_TAG
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY-nginx:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY-nginx:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY-nginx:latest
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:nginx-$IMAGE_TAG ./frontend
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:nginx-$IMAGE_TAG
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:nginx-$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:nginx-latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:nginx-latest
 
       - name: Build and push Docker image for api (backend)
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY-api:$IMAGE_TAG ./backend
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY-api:$IMAGE_TAG
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY-api:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY-api:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY-api:latest
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:api-$IMAGE_TAG ./backend
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:api-$IMAGE_TAG
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:api-$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:api-latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:api-latest
 
       - name: Build Frontend App
         run: |
