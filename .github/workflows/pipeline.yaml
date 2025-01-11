@@ -50,15 +50,15 @@ jobs:
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:nginx-$IMAGE_TAG ./frontend
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:nginx-$IMAGE_TAG
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:nginx-$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:nginx-latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:nginx-latest
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:nginx-$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:nginx
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:nginx
 
       - name: Build and push Docker image for api (backend)
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:api-$IMAGE_TAG ./backend
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:api-$IMAGE_TAG
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:api-$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:api-latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:api-latest
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:api-$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:api
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:api
 
       - name: Build Frontend App
         run: |

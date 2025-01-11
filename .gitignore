@@ -61,7 +61,7 @@ override.tf.json
 terraform.rc
 
 .DS_Store
-*.pub
+deployer-key.pub
 deployer-key
 ec2ecsglog
 
