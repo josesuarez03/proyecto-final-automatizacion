@@ -12,7 +12,7 @@ resource "aws_ecs_capacity_provider" "ecs_capacity_provider" {
      maximum_scaling_step_size = 1000
      minimum_scaling_step_size = 1
      status                    = "ENABLED"
-     target_capacity           = 3
+     target_capacity           = 50
    }
  }
 }
@@ -258,8 +258,8 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     {
       name      = "nginx"
       image = "${data.aws_ecr_repository.docker.repository_url}:nginx"
-      cpu       = 256
-      memory    = 512
+      cpu       = 128  # Reduced CPU
+      memory    = 256  # Reduced memory
       essential = true
       portMappings = [
         {
@@ -287,8 +287,8 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     {
       name      = "nginx-exporter"
       image     = "nginx/nginx-prometheus-exporter:latest"
-      cpu       = 128
-      memory    = 256
+      cpu       = 64  # Reduced CPU
+      memory    = 128  # Reduced memory
       essential = false
       portMappings = [
         {
@@ -336,8 +336,8 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     {
       name      = "mariadb-exporter"
       image     = "prom/mysqld-exporter:latest"
-      cpu       = 128
-      memory    = 256
+      cpu       = 64  # Reduced CPU
+      memory    = 128  # Reduced memory
       essential = false
       portMappings = [
         {
@@ -353,8 +353,8 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     {
       name      = "prometheus"
       image     = "prom/prometheus:latest"
-      cpu       = 256
-      memory    = 512
+      cpu       = 128  # Reduced CPU
+      memory    = 256  # Reduced memory
       essential = true
       portMappings = [
         {
@@ -374,8 +374,8 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     {
       name      = "grafana"
       image     = "grafana/grafana:latest"
-      cpu       = 256
-      memory    = 512
+      cpu       = 128  # Reduced CPU
+      memory    = 256  # Reduced memory
       essential = true
       portMappings = [
         {
@@ -400,8 +400,8 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     {
       name      = "elasticsearch"
       image     = "elasticsearch:7.9.1"
-      cpu       = 1024
-      memory    = 2048
+      cpu       = 512  # Reduced CPU
+      memory    = 1024  # Reduced memory
       essential = true
       portMappings = [
         {
@@ -447,8 +447,8 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     {
       name      = "logstash"
       image     = "logstash:7.9.1"
-      cpu       = 512
-      memory    = 1024
+      cpu       = 128  # Reduced CPU
+      memory    = 256  # Reduced memory
       essential = true
       portMappings = [
         {
@@ -488,8 +488,8 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     {
       name      = "kibana"
       image     = "kibana:7.9.1"
-      cpu       = 256
-      memory    = 512
+      cpu       = 128  # Reduced CPU
+      memory    = 256  # Reduced memory
       essential = true
       portMappings = [
         {
