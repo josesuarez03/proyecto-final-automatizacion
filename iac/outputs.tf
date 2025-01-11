@@ -1,10 +1,10 @@
 output "ecs_cluster_name" {
-  value       = aws_ecs_cluster.main.name
+  value       = aws_ecs_cluster.ecs_cluster.name
   description = "Name of the ECS cluster"
 }
 
 output "ecs_task_definition_arn" {
-  value       = aws_ecs_task_definition.app_task.arn
+  value       = aws_ecs_task_definition.monitoring_stack.arn
   description = "ARN of the ECS task definition"
 }
 
@@ -20,6 +20,6 @@ output "bucket_arn" {
 }
 
 output "cloudwatch_log_group" {
-  value       = aws_cloudwatch_log_group.ecs_logs.name
+  value       = aws_cloudwatch_log_group.monitoring_stack.name
   description = "Name of the CloudWatch log group"
 }
