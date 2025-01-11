@@ -1,6 +1,6 @@
 resource "aws_key_pair" "ecs_key_pair" {
   key_name   = "ec2ecsglog"
-  public_key = file("${path.module}/deployer-key.pub")
+  public_key = file("${path.module}/ec2ecsglog.pub")
 }
 
 resource "aws_launch_template" "ecs_lt" {
