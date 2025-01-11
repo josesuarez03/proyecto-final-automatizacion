@@ -40,7 +40,10 @@ EOF
 
 # Descargar configuraciones desde S3
 log "Descargando configuraciones desde S3..."
-S3_BUCKET="artifacts-\$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .accountId)"
+ACCOUNT_ID=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .accountId)
+S3_BUCKET="artifacts-${ACCOUNT_ID}"
+log "Usando bucket S3: $S3_BUCKET"
+
 configs=(
     "monitoring/prometheus/prometheus.yml:/opt/monitoring/prometheus/"
     "monitoring/prometheus/rules:/opt/monitoring/prometheus/"
