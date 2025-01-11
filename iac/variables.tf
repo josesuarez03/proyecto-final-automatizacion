@@ -27,8 +27,8 @@ variable "allowed_ip" {
   default     = "81.41.129.51/32"
 }
 
-# Variables necesarias
 variable "environment" {
-  description = "Producción"
+  description = "Ambiente de despliegue"
   type        = string
+  default     = "production"
 }
