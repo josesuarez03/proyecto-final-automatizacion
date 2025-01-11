@@ -474,12 +474,12 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
           readOnly     = false
         },
         {
-          sourceVolume  = "nginx_logs"
+          sourceVolume  = "nginx-logs"
           containerPath = "/var/log/nginx"
           readOnly     = true
         },
         {
-          sourceVolume  = "mysql_logs"
+          sourceVolume  = "mysql-logs"
           containerPath = "/var/log/mysql"
           readOnly     = true
         }
