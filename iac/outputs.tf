@@ -8,7 +8,6 @@ output "ecs_task_definition_arn" {
   description = "ARN of the ECS task definition"
 }
 
-# Outputs para referencia
 output "bucket_name" {
   description = "Nombre del bucket de artefactos"
   value       = aws_s3_bucket.artifacts.id
@@ -22,4 +21,24 @@ output "bucket_arn" {
 output "cloudwatch_log_group" {
   value       = aws_cloudwatch_log_group.monitoring_stack.name
   description = "Name of the CloudWatch log group"
+}
+
+output "alb_dns_name" {
+  value       = aws_lb.ecs_alb.dns_name
+  description = "DNS name of the Application Load Balancer"
+}
+
+output "service_security_group_id" {
+  value       = aws_security_group.security_group.id
+  description = "ID of the ECS service security group"
+}
+
+output "ecs_service_name" {
+  value       = aws_ecs_service.monitoring_service.name
+  description = "Name of the ECS service"
+}
+
+output "cloudwatch_dashboard_url" {
+  value       = "https://${var.aws_region}.console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#dashboards:name=${aws_cloudwatch_dashboard.ecs.dashboard_name}"
+  description = "URL of the CloudWatch dashboard"
 }
