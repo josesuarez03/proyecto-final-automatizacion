@@ -41,8 +41,8 @@ resource "aws_ecs_cluster_capacity_providers" "cluster" {
 }
 
 # Servicio ECS
-resource "aws_ecs_service" "monitoring_service" {
-  name                               = "monitoring-service"
+resource "aws_ecs_service" "monitoring_stack" {
+  name                               = "monitoring-stack"
   cluster                           = aws_ecs_cluster.ecs_cluster.id
   task_definition                   = aws_ecs_task_definition.monitoring_stack.arn
   desired_count                     = 2

@@ -120,7 +120,7 @@ resource "aws_lb_listener" "mariadb" {
 resource "aws_appautoscaling_target" "ecs_target" {
   max_capacity       = 4
   min_capacity       = 1
-  resource_id        = "service/${aws_ecs_cluster.ecs_cluster.name}/${aws_ecs_service.monitoring_service.name}"
+  resource_id        = "service/${aws_ecs_cluster.ecs_cluster.name}/${aws_ecs_service.monitoring_stack.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 }

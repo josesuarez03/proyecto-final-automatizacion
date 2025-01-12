@@ -1,3 +1,44 @@
+# Policy Document for ECS Execution Role
+data "aws_iam_policy_document" "ecs_assume_role_policy" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["ecs-tasks.amazonaws.com"]
+    }
+    effect = "Allow"
+  }
+}
+
+resource "aws_iam_role" "ecs_execution_role" {
+  name               = "ecs-execution-role"
+  assume_role_policy = data.aws_iam_policy_document.ecs_assume_role_policy.json
+}
+
+# Policy for KMS Access
+resource "aws_iam_policy" "kms_access_policy" {
+  name        = "kms-access-policy"
+  policy      = data.aws_iam_policy_document.kms_access_policy.json
+}
+
+data "aws_iam_policy_document" "kms_access_policy" {
+  statement {
+    actions = ["kms:Decrypt", "kms:Encrypt", "kms:GenerateDataKey"]
+    resources = [aws_kms_key.monitoring_stack.arn]
+    effect = "Allow"
+    principals {
+      type        = "Service"
+      identifiers = ["logs.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_kms_key" "monitoring_stack" {
+  description             = "KMS key for monitoring stack"
+  deletion_window_in_days = 30
+  enable_key_rotation     = true
+}
+
 # ECS Task Execution Role
 resource "aws_iam_role" "ecs_task_execution_role" {
   name = "ecs-task-execution-role"
@@ -22,13 +63,11 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   }
 }
 
-# Política base para Task Execution Role
 resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   role       = aws_iam_role.ecs_task_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# Política adicional para ECR y CloudWatch Logs
 resource "aws_iam_role_policy" "ecs_task_execution_additional" {
   name = "ecs-task-execution-additional"
   role = aws_iam_role.ecs_task_execution_role.id
@@ -52,7 +91,6 @@ resource "aws_iam_role_policy" "ecs_task_execution_additional" {
   })
 }
 
-# Política para acceso a Secrets Manager y SSM Parameters
 resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
   name = "ecs-task-execution-secrets"
   role = aws_iam_role.ecs_task_execution_role.id
@@ -102,7 +140,6 @@ resource "aws_iam_role" "ecs_task_role" {
   }
 }
 
-# Política para CloudWatch Logs
 resource "aws_iam_role_policy" "ecs_task_cloudwatch" {
   name = "ecs-task-cloudwatch"
   role = aws_iam_role.ecs_task_role.id
@@ -125,7 +162,6 @@ resource "aws_iam_role_policy" "ecs_task_cloudwatch" {
   })
 }
 
-# Política para Service Discovery
 resource "aws_iam_role_policy" "ecs_task_service_discovery" {
   name = "ecs-task-service-discovery"
   role = aws_iam_role.ecs_task_role.id
@@ -149,7 +185,6 @@ resource "aws_iam_role_policy" "ecs_task_service_discovery" {
   })
 }
 
-# Política para EFS
 resource "aws_iam_role_policy" "ecs_task_efs" {
   name = "ecs-task-efs"
   role = aws_iam_role.ecs_task_role.id
@@ -172,7 +207,6 @@ resource "aws_iam_role_policy" "ecs_task_efs" {
   })
 }
 
-# Política para S3
 resource "aws_iam_role_policy" "ecs_task_s3" {
   name = "ecs-task-s3"
   role = aws_iam_role.ecs_task_role.id
@@ -197,7 +231,6 @@ resource "aws_iam_role_policy" "ecs_task_s3" {
   })
 }
 
-# Política para Auto Scaling
 resource "aws_iam_role_policy" "ecs_task_autoscaling" {
   name = "ecs-task-autoscaling"
   role = aws_iam_role.ecs_task_role.id
@@ -221,7 +254,6 @@ resource "aws_iam_role_policy" "ecs_task_autoscaling" {
   })
 }
 
-# Política para Systems Manager Session Manager
 resource "aws_iam_role_policy" "ecs_task_ssm" {
   name = "ecs-task-ssm"
   role = aws_iam_role.ecs_task_role.id

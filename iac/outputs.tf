@@ -34,7 +34,7 @@ output "service_security_group_id" {
 }
 
 output "ecs_service_name" {
-  value       = aws_ecs_service.monitoring_service.name
+  value       = aws_ecs_service.monitoring_stack.name
   description = "Name of the ECS service"
 }
 
