@@ -161,14 +161,14 @@ resource "aws_ecs_task_definition" "services_stack" {
   task_role_arn            = aws_iam_role.ecs_task_role.arn
 
   volume {
-    name = "efs-monitoring"
+    name = "efs_monitoring"
     efs_volume_configuration {
       file_system_id = aws_efs_file_system.monitoring_data.id
       root_directory = "/"
     }
   }
 
-    volume {
+  volume {
     name = "mysql_data"
     efs_volume_configuration {
       file_system_id          = aws_efs_file_system.monitoring_data.id
@@ -240,7 +240,7 @@ resource "aws_ecs_task_definition" "services_stack" {
       ]
       mountPoints = [
         {
-          sourceVolume  = "nginx-logs"
+          sourceVolume  = "nginx_logs"
           containerPath = "/var/log/nginx"
           readOnly     = false
         }
@@ -329,19 +329,6 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
   }
 
   volume {
-    name = "config_storage"
-    efs_volume_configuration {
-      file_system_id          = aws_efs_file_system.monitoring_data.id
-      root_directory          = "/"
-      transit_encryption      = "ENABLED"
-      authorization_config {
-        access_point_id = aws_efs_access_point.config_storage.id
-        iam             = "ENABLED"
-      }
-    }
-  }
-
-  volume {
     name = "nginx_logs"
     efs_volume_configuration {
       file_system_id          = aws_efs_file_system.monitoring_data.id
@@ -367,6 +354,19 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     }
   }
 
+  volume {
+    name = "config_files"
+    efs_volume_configuration {
+      file_system_id          = aws_efs_file_system.monitoring_data.id
+      root_directory          = "/"
+      transit_encryption      = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.config_storage.id
+        iam             = "ENABLED"
+      }
+    }
+  }
+
   container_definitions = jsonencode([
     {
       name      = "config-init"
@@ -383,7 +383,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       ]
       mountPoints = [
         {
-          sourceVolume  = "config-storage"
+          sourceVolume  = "config_files"
           containerPath = "/config"
           readOnly     = false
         }
@@ -468,7 +468,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       ]
       mountPoints = [
         {
-          sourceVolume  = "config-storage"
+          sourceVolume  = "config_files"
           containerPath = "/etc/prometheus"
           readOnly     = true
         },
@@ -508,7 +508,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       ]
       mountPoints = [
         {
-          sourceVolume  = "config-storage"
+          sourceVolume  = "config_files"
           containerPath = "/etc/grafana"
           readOnly     = true
         },
@@ -553,7 +553,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       ]
       mountPoints = [
         {
-          sourceVolume  = "config-storage"
+          sourceVolume  = "config_files"
           containerPath = "/usr/share/elasticsearch/config"
           readOnly     = false
         },
@@ -566,7 +566,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       environment = [
         { name = "discovery.type", value = "single-node" },
         { name = "ES_JAVA_OPTS", value = "-Xms1g -Xmx1g" },
-        { name = "path.config", value = "/config/elk/elasticsearch" }  # Agregado para especificar la ruta de config
+        { name = "path.config", value = "/config/elk/elasticsearch" }
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -602,7 +602,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       ]
       mountPoints = [
         {
-          sourceVolume  = "config-storage"
+          sourceVolume  = "config_files"
           containerPath = "/config"
           readOnly     = true
         },
@@ -612,12 +612,12 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
           readOnly     = false
         },
         {
-          sourceVolume  = "nginx-logs"
+          sourceVolume  = "nginx_logs"
           containerPath = "/var/log/nginx"
           readOnly     = true
         },
         {
-          sourceVolume  = "mysql-logs"
+          sourceVolume  = "mysql_logs"
           containerPath = "/var/log/mysql"
           readOnly     = true
         }
@@ -660,7 +660,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       ]
       mountPoints = [
         {
-          sourceVolume  = "config-storage"
+          sourceVolume  = "config-files"
           containerPath = "/config"
           readOnly     = true
         }
