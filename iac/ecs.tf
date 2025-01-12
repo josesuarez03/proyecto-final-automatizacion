@@ -450,12 +450,6 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
           protocol     = "tcp"
         }
       ]
-      dependsOn = [
-        {
-          containerName = "mariadb"
-          condition    = "START"
-        }
-      ]
       environment = [
         { name = "DATA_SOURCE_NAME", value = "admin:1234@tcp(monitoring.local:3306)/task_app" }
       ]
