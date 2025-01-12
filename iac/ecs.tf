@@ -111,17 +111,17 @@ resource "aws_ecs_task_definition" "services_stack" {
 
   volume {
     name = "nginx-logs"
-    docker_volume_configuration {
-      scope  = "task"
-      driver = "local"
+    efs_volume_configuration {
+      file_system_id = aws_efs_file_system.monitoring_data.id
+      root_directory = "/nginx-logs"
     }
   }
 
   volume {
     name = "mysql-logs"
-    docker_volume_configuration {
-      scope  = "task"
-      driver = "local"
+    efs_volume_configuration {
+      file_system_id = aws_efs_file_system.monitoring_data.id
+      root_directory = "/mysql-logs"
     }
   }
 
@@ -251,9 +251,25 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
 
   volume {
     name = "config-storage"
-    docker_volume_configuration {
-      scope  = "task"
-      driver = "local"
+    efs_volume_configuration {
+      file_system_id = aws_efs_file_system.monitoring_data.id
+      root_directory = "/config-storage"
+    }
+  }
+
+  volume {
+    name = "nginx-logs"
+    efs_volume_configuration {
+      file_system_id = aws_efs_file_system.monitoring_data.id
+      root_directory = "/nginx-logs"
+    }
+  }
+
+  volume {
+    name = "mysql-logs"
+    efs_volume_configuration {
+      file_system_id = aws_efs_file_system.monitoring_data.id
+      root_directory = "/mysql-logs"
     }
   }
 
