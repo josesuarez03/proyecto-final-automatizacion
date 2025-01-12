@@ -199,8 +199,8 @@ resource "aws_iam_role_policy" "ecs_task_s3" {
           "s3:DeleteObject"
         ]
         Resource = [
-          aws_s3_bucket.artifacts.arn,
-          "${aws_s3_bucket.artifacts.arn}/*"
+          "arn:aws:s3:::${aws_s3_bucket.artifacts.id}/*",
+          "arn:aws:s3:::${aws_s3_bucket.artifacts.id}"
         ]
       }
     ]
