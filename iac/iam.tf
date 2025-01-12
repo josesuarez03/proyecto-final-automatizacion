@@ -14,17 +14,47 @@ resource "aws_iam_role" "ecs_task_execution_role" {
       }
     ]
   })
+
+  tags = {
+    Name        = "ECS Task Execution Role"
+    Environment = var.environment
+    Managed_by  = "Terraform"
+  }
 }
 
-# Políticas básicas para el Task Execution Role
-resource "aws_iam_role_policy_attachment" "ecs_task_execution_role" {
+# Política base para Task Execution Role
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   role       = aws_iam_role.ecs_task_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# Política adicional para acceso a Secrets Manager y parámetros de SSM
+# Política adicional para ECR y CloudWatch Logs
 resource "aws_iam_role_policy" "ecs_task_execution_additional" {
   name = "ecs-task-execution-additional"
+  role = aws_iam_role.ecs_task_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Política para acceso a Secrets Manager y SSM Parameters
+resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
+  name = "ecs-task-execution-secrets"
   role = aws_iam_role.ecs_task_execution_role.id
 
   policy = jsonencode({
@@ -64,6 +94,12 @@ resource "aws_iam_role" "ecs_task_role" {
       }
     ]
   })
+
+  tags = {
+    Name        = "ECS Task Role"
+    Environment = var.environment
+    Managed_by  = "Terraform"
+  }
 }
 
 # Política para CloudWatch Logs
@@ -79,7 +115,9 @@ resource "aws_iam_role_policy" "ecs_task_cloudwatch" {
         Action = [
           "logs:CreateLogStream",
           "logs:PutLogEvents",
-          "logs:CreateLogGroup"
+          "logs:CreateLogGroup",
+          "logs:DescribeLogStreams",
+          "logs:DescribeLogGroups"
         ]
         Resource = "arn:aws:logs:*:*:*"
       }
@@ -87,9 +125,9 @@ resource "aws_iam_role_policy" "ecs_task_cloudwatch" {
   })
 }
 
-# Política para Service Connect
-resource "aws_iam_role_policy" "ecs_task_service_connect" {
-  name = "ecs-task-service-connect"
+# Política para Service Discovery
+resource "aws_iam_role_policy" "ecs_task_service_discovery" {
+  name = "ecs-task-service-discovery"
   role = aws_iam_role.ecs_task_role.id
 
   policy = jsonencode({
@@ -98,7 +136,12 @@ resource "aws_iam_role_policy" "ecs_task_service_connect" {
       {
         Effect = "Allow"
         Action = [
-          "servicediscovery:DiscoverInstances"
+          "servicediscovery:RegisterInstance",
+          "servicediscovery:DeregisterInstance",
+          "servicediscovery:DiscoverInstances",
+          "servicediscovery:GetOperation",
+          "servicediscovery:GetInstancesHealthStatus",
+          "route53:GetHealthCheckStatus"
         ]
         Resource = "*"
       }
@@ -119,9 +162,11 @@ resource "aws_iam_role_policy" "ecs_task_efs" {
         Action = [
           "elasticfilesystem:ClientMount",
           "elasticfilesystem:ClientWrite",
-          "elasticfilesystem:ClientRootAccess"
+          "elasticfilesystem:ClientRootAccess",
+          "elasticfilesystem:DescribeMountTargets",
+          "elasticfilesystem:DescribeFileSystems"
         ]
-        Resource = aws_efs_file_system.monitoring_data.arn
+        Resource = "*"
       }
     ]
   })
@@ -139,7 +184,9 @@ resource "aws_iam_role_policy" "ecs_task_s3" {
         Effect = "Allow"
         Action = [
           "s3:GetObject",
-          "s3:ListBucket"
+          "s3:ListBucket",
+          "s3:PutObject",
+          "s3:DeleteObject"
         ]
         Resource = [
           aws_s3_bucket.artifacts.arn,
@@ -164,7 +211,9 @@ resource "aws_iam_role_policy" "ecs_task_autoscaling" {
           "application-autoscaling:*",
           "cloudwatch:PutMetricAlarm",
           "cloudwatch:DescribeAlarms",
-          "cloudwatch:DeleteAlarms"
+          "cloudwatch:DeleteAlarms",
+          "cloudwatch:GetMetricStatistics",
+          "cloudwatch:ListMetrics"
         ]
         Resource = "*"
       }
@@ -172,7 +221,7 @@ resource "aws_iam_role_policy" "ecs_task_autoscaling" {
   })
 }
 
-# Política para SSM Session Manager
+# Política para Systems Manager Session Manager
 resource "aws_iam_role_policy" "ecs_task_ssm" {
   name = "ecs-task-ssm"
   role = aws_iam_role.ecs_task_role.id
@@ -186,7 +235,8 @@ resource "aws_iam_role_policy" "ecs_task_ssm" {
           "ssmmessages:CreateControlChannel",
           "ssmmessages:CreateDataChannel",
           "ssmmessages:OpenControlChannel",
-          "ssmmessages:OpenDataChannel"
+          "ssmmessages:OpenDataChannel",
+          "ssm:UpdateInstanceInformation"
         ]
         Resource = "*"
       }

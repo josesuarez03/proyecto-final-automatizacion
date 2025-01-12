@@ -63,8 +63,7 @@ resource "aws_internet_gateway" "main" {
 
 # NAT Gateways para las subnets privadas
 resource "aws_eip" "nat_1" {
-  domain = "vpc"
-  
+    
   tags = {
     Name = "nat-1"
   }
@@ -80,8 +79,7 @@ resource "aws_nat_gateway" "nat_1" {
 }
 
 resource "aws_eip" "nat_2" {
-  domain = "vpc"
-  
+    
   tags = {
     Name = "nat-2"
   }

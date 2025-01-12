@@ -64,7 +64,7 @@ resource "aws_ecs_service" "monitoring_service" {
 
   network_configuration {
     subnets          = [aws_subnet.private_1.id, aws_subnet.private_2.id]
-    security_groups  = [aws_security_group.ecs_tasks.id]
+    security_groups  = [aws_security_group.security_group.id]
     assign_public_ip = false
   }
 
@@ -74,32 +74,35 @@ resource "aws_ecs_service" "monitoring_service" {
 
   # Load Balancer Configurations
   load_balancer {
-    target_group_arn = aws_lb_target_group.prometheus.arn
-    container_name   = "prometheus"
-    container_port   = 9090
+  target_group_arn = aws_lb_target_group.ecs_tg_80.arn
+  container_name   = "nginx"
+  container_port   = 80
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.grafana.arn
+    target_group_arn = aws_lb_target_group.ecs_tg_3000.arn
     container_name   = "grafana"
     container_port   = 3000
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.kibana.arn
+    target_group_arn = aws_lb_target_group.ecs_tg_5601.arn
     container_name   = "kibana"
     container_port   = 5601
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.elasticsearch.arn
-    container_name   = "elasticsearch"
-    container_port   = 9200
+    target_group_arn = aws_lb_target_group.ecs_tg_3306.arn
+    container_name   = "mariadb"
+    container_port   = 3306
   }
 
   depends_on = [
-    aws_iam_role_policy_attachment.ecs_task_execution_role,
-    aws_lb_listener.front_end
+    aws_iam_role_policy_attachment.ecs_task_execution_role_policy,
+    aws_lb_listener.http,
+    aws_lb_listener.grafana,
+    aws_lb_listener.kibana,
+    aws_lb_listener.mariadb
   ]
 }
 
@@ -162,10 +165,10 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
   network_mode            = "awsvpc"
   cpu                     = "4096"
   memory                  = "8192"
-  execution_role_arn      = aws_iam_role.ecs_execution_role.arn
+  execution_role_arn      = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn           = aws_iam_role.ecs_task_role.arn
 
-  # EFS volume para datos persistentes
+  # EFS volume for persistent data
   volume {
     name = "efs-monitoring"
     efs_volume_configuration {
@@ -174,9 +177,25 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     }
   }
 
-  # Volúmenes temporales para configuraciones
+  # Volumes for logs and configurations
   volume {
     name = "config-storage"
+    docker_volume_configuration {
+      scope  = "task"
+      driver = "local"
+    }
+  }
+
+  volume {
+    name = "nginx-logs"
+    docker_volume_configuration {
+      scope  = "task"
+      driver = "local"
+    }
+  }
+
+  volume {
+    name = "mysql-logs"
     docker_volume_configuration {
       scope  = "task"
       driver = "local"
@@ -189,10 +208,13 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       image     = "amazon/aws-cli:latest"
       essential = false
       command   = [
-        "sh", "-c", 
-        "aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/prometheus/prometheus.yml /config/prometheus/ && \
-         aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/grafana/ /config/grafana/ --recursive && \
-         aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/elk/ /config/elk/ --recursive"
+        "sh",
+        "-c",
+        <<-EOT
+        aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/prometheus/prometheus.yml /config/prometheus/ && \
+        aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/grafana/ /config/grafana/ --recursive && \
+        aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/elk/ /config/elk/ --recursive
+        EOT
       ]
       mountPoints = [
         {
@@ -207,6 +229,155 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
           "awslogs-group"         = "/ecs/monitoring-stack"
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "config-init"
+        }
+      }
+    },
+    {
+      name      = "api"
+      image     = "${data.aws_ecr_repository.docker.repository_url}:api"
+      cpu       = 256
+      memory    = 512
+      essential = true
+      environment = [
+        { name = "DB_HOST", value = "localhost" },
+        { name = "DB_USER", value = "admin" },
+        { name = "DB_PASSWORD", value = "1234" },
+        { name = "DB_NAME", value = "task_app" }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/monitoring-stack"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "api"
+        }
+      }
+    },
+    {
+      name      = "nginx"
+      image     = "${data.aws_ecr_repository.docker.repository_url}:nginx"
+      cpu       = 128
+      memory    = 256
+      essential = true
+      portMappings = [
+        {
+          containerPort = 80
+          hostPort     = 80
+          protocol     = "tcp"
+        }
+      ]
+      mountPoints = [
+        {
+          sourceVolume  = "nginx-logs"
+          containerPath = "/var/log/nginx"
+          readOnly     = false
+        }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/monitoring-stack"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "nginx"
+        }
+      }
+    },
+    {
+      name      = "nginx-exporter"
+      image     = "nginx/nginx-prometheus-exporter:latest"
+      cpu       = 64
+      memory    = 128
+      essential = false
+      portMappings = [
+        {
+          containerPort = 9113
+          hostPort     = 9113
+          protocol     = "tcp"
+        }
+      ]
+      environment = [
+        { name = "NGINX_STATUS_URL", value = "http://localhost/metrics" }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/monitoring-stack"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "nginx-exporter"
+        }
+      }
+    },
+    {
+      name      = "mariadb"
+      image     = "mariadb:10.6"
+      cpu       = 512
+      memory    = 1024
+      essential = true
+      command   = [
+        "--transaction-isolation=READ-COMMITTED",
+        "--log-bin=binlog",
+        "--binlog-format=ROW",
+        "--general-log=1",
+        "--general-log-file=/var/log/mysql/general.log",
+        "--slow-query-log=1",
+        "--slow-query-log-file=/var/log/mysql/slow.log"
+      ]
+      portMappings = [
+        {
+          containerPort = 3306
+          hostPort     = 3306
+          protocol     = "tcp"
+        }
+      ]
+      environment = [
+        { name = "MARIADB_ROOT_PASSWORD", value = "root" },
+        { name = "MYSQL_PASSWORD", value = "1234" },
+        { name = "MYSQL_DATABASE", value = "task_app" },
+        { name = "MYSQL_USER", value = "admin" }
+      ]
+      mountPoints = [
+        {
+          sourceVolume  = "efs-monitoring"
+          containerPath = "/var/lib/mysql"
+          readOnly     = false
+        },
+        {
+          sourceVolume  = "mysql-logs"
+          containerPath = "/var/log/mysql"
+          readOnly     = false
+        }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/monitoring-stack"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "mariadb"
+        }
+      }
+    },
+    {
+      name      = "mariadb-exporter"
+      image     = "prom/mysqld-exporter:latest"
+      cpu       = 64
+      memory    = 128
+      essential = false
+      portMappings = [
+        {
+          containerPort = 9104
+          hostPort     = 9104
+          protocol     = "tcp"
+        }
+      ]
+      environment = [
+        { name = "DATA_SOURCE_NAME", value = "admin:1234@tcp(localhost:3306)/task_app" }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/monitoring-stack"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "mariadb-exporter"
         }
       }
     },
@@ -367,6 +538,16 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
           sourceVolume  = "efs-monitoring"
           containerPath = "/usr/share/logstash/data"
           readOnly     = false
+        },
+        {
+          sourceVolume  = "nginx-logs"
+          containerPath = "/var/log/nginx"
+          readOnly     = true
+        },
+        {
+          sourceVolume  = "mysql-logs"
+          containerPath = "/var/log/mysql"
+          readOnly     = true
         }
       ]
       logConfiguration = {
