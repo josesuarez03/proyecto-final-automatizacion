@@ -375,16 +375,19 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       name      = "config-init"
       image     = "amazon/aws-cli:latest"
       repositoryCredentials = {
-      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds"
+        credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds"
       }
       essential = false
       command   = [
         "sh",
         "-c",
         <<-EOT
+        set -e
         aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/prometheus/prometheus.yml /config/prometheus/ && \
         aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/grafana/ /config/grafana/ --recursive && \
-        aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/elk/ /config/elk/ --recursive
+        aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/elk/ /config/elk/ --recursive && \
+        echo "Configuration files copied successfully" && \
+        exit 0
         EOT
       ]
       mountPoints = [
@@ -419,6 +422,12 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
           protocol     = "tcp"
         }
       ]
+      dependsOn = [
+        {
+          containerName = "nginx"
+          condition    = "START"
+        }
+      ]
       environment = [
         { name = "NGINX_STATUS_URL", value = "http://localhost/metrics" }
       ]
@@ -447,8 +456,14 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
           protocol     = "tcp"
         }
       ]
+      dependsOn = [
+        {
+          containerName = "mariadb"
+          condition    = "START"
+        }
+      ]
       environment = [
-        { name = "DATA_SOURCE_NAME", value = "admin:1234@tcp(localhost:3306)/task_app" }
+        { name = "DATA_SOURCE_NAME", value = "admin:1234@tcp(monitoring.local:3306)/task_app" }
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -758,6 +773,7 @@ resource "aws_ecs_service" "monitoring_stack" {
 
   depends_on = [
     aws_iam_role_policy_attachment.ecs_task_execution_role_policy,
+    aws_ecs_service.services_stack,
     aws_lb_listener.grafana,
     aws_lb_listener.kibana,
   ]
