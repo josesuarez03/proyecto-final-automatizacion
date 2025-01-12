@@ -660,7 +660,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       ]
       mountPoints = [
         {
-          sourceVolume  = "config-files"
+          sourceVolume  = "config_files"
           containerPath = "/config"
           readOnly     = true
         }
