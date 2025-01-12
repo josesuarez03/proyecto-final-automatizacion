@@ -15,30 +15,6 @@ resource "aws_iam_role" "ecs_execution_role" {
   assume_role_policy = data.aws_iam_policy_document.ecs_assume_role_policy.json
 }
 
-# Policy for KMS Access
-resource "aws_iam_policy" "kms_access_policy" {
-  name        = "kms-access-policy"
-  policy      = data.aws_iam_policy_document.kms_access_policy.json
-}
-
-data "aws_iam_policy_document" "kms_access_policy" {
-  statement {
-    actions = ["kms:Decrypt", "kms:Encrypt", "kms:GenerateDataKey"]
-    resources = [aws_kms_key.monitoring_stack.arn]
-    effect = "Allow"
-    principals {
-      type        = "Service"
-      identifiers = ["logs.amazonaws.com"]
-    }
-  }
-}
-
-resource "aws_kms_key" "monitoring_stack" {
-  description             = "KMS key for monitoring stack"
-  deletion_window_in_days = 30
-  enable_key_rotation     = true
-}
-
 # ECS Task Execution Role
 resource "aws_iam_role" "ecs_task_execution_role" {
   name = "ecs-task-execution-role"

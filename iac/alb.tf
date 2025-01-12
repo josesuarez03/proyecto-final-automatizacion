@@ -117,7 +117,16 @@ resource "aws_lb_listener" "mariadb" {
   }
 }
 
-resource "aws_appautoscaling_target" "ecs_target" {
+# Auto Scaling Target
+resource "aws_appautoscaling_target" "ecs_services_stack" {
+  max_capacity       = 4
+  min_capacity       = 1
+  resource_id        = "service/${aws_ecs_cluster.ecs_cluster.name}/${aws_ecs_service.services_stack.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+resource "aws_appautoscaling_target" "ecs_monitoring_stack" {
   max_capacity       = 4
   min_capacity       = 1
   resource_id        = "service/${aws_ecs_cluster.ecs_cluster.name}/${aws_ecs_service.monitoring_stack.name}"
@@ -125,13 +134,13 @@ resource "aws_appautoscaling_target" "ecs_target" {
   service_namespace  = "ecs"
 }
 
-# CPU Utilization Scaling
-resource "aws_appautoscaling_policy" "ecs_cpu_policy" {
-  name               = "cpu-autoscaling"
+# Auto Scaling Policies
+resource "aws_appautoscaling_policy" "ecs_cpu_policy_services" {
+  name               = "cpu-autoscaling-services"
   policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.ecs_target.resource_id
-  scalable_dimension = aws_appautoscaling_target.ecs_target.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.ecs_target.service_namespace
+  resource_id        = aws_appautoscaling_target.ecs_services_stack.resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs_services_stack.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs_services_stack.service_namespace
 
   target_tracking_scaling_policy_configuration {
     predefined_metric_specification {
@@ -141,13 +150,12 @@ resource "aws_appautoscaling_policy" "ecs_cpu_policy" {
   }
 }
 
-# Memory Utilization Scaling
-resource "aws_appautoscaling_policy" "ecs_memory_policy" {
-  name               = "memory-autoscaling"
+resource "aws_appautoscaling_policy" "ecs_memory_policy_services" {
+  name               = "memory-autoscaling-services"
   policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.ecs_target.resource_id
-  scalable_dimension = aws_appautoscaling_target.ecs_target.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.ecs_target.service_namespace
+  resource_id        = aws_appautoscaling_target.ecs_services_stack.resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs_services_stack.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs_services_stack.service_namespace
 
   target_tracking_scaling_policy_configuration {
     predefined_metric_specification {
@@ -157,13 +165,42 @@ resource "aws_appautoscaling_policy" "ecs_memory_policy" {
   }
 }
 
-# ALB Request Count Scaling
+resource "aws_appautoscaling_policy" "ecs_cpu_policy_monitoring" {
+  name               = "cpu-autoscaling-monitoring"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.ecs_monitoring_stack.resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs_monitoring_stack.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs_monitoring_stack.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+    target_value = 80.0
+  }
+}
+
+resource "aws_appautoscaling_policy" "ecs_memory_policy_monitoring" {
+  name               = "memory-autoscaling-monitoring"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.ecs_monitoring_stack.resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs_monitoring_stack.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs_monitoring_stack.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+    }
+    target_value = 80.0
+  }
+}
+
 resource "aws_appautoscaling_policy" "ecs_alb_request_count_policy" {
   name               = "alb-request-count-autoscaling"
   policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.ecs_target.resource_id
-  scalable_dimension = aws_appautoscaling_target.ecs_target.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.ecs_target.service_namespace
+  resource_id        = aws_appautoscaling_target.ecs_services_stack.resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs_services_stack.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs_services_stack.service_namespace
 
   target_tracking_scaling_policy_configuration {
     predefined_metric_specification {
