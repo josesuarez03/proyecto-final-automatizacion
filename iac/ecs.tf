@@ -422,12 +422,6 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
           protocol     = "tcp"
         }
       ]
-      dependsOn = [
-        {
-          containerName = "nginx"
-          condition    = "START"
-        }
-      ]
       environment = [
         { name = "NGINX_STATUS_URL", value = "http://localhost/metrics" }
       ]
