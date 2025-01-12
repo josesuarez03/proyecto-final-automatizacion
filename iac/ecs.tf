@@ -71,8 +71,67 @@ resource "aws_efs_file_system" "monitoring_data" {
   creation_token = "monitoring-data"
   encrypted      = true
 
+  lifecycle_policy {
+    transition_to_ia = "AFTER_30_DAYS"
+  }
+
   tags = {
     Name = "MonitoringData"
+  }
+}
+
+# Create access points for different directories
+resource "aws_efs_access_point" "mysql_logs" {
+  file_system_id = aws_efs_file_system.monitoring_data.id
+
+  root_directory {
+    path = "/mysql_logs"
+    creation_info {
+      owner_gid   = 0
+      owner_uid   = 0
+      permissions = "755"
+    }
+  }
+
+  posix_user {
+    gid = 0
+    uid = 0
+  }
+}
+
+resource "aws_efs_access_point" "nginx_logs" {
+  file_system_id = aws_efs_file_system.monitoring_data.id
+
+  root_directory {
+    path = "/nginx_logs"
+    creation_info {
+      owner_gid   = 0
+      owner_uid   = 0
+      permissions = "755"
+    }
+  }
+
+  posix_user {
+    gid = 0
+    uid = 0
+  }
+}
+
+resource "aws_efs_access_point" "config_storage" {
+  file_system_id = aws_efs_file_system.monitoring_data.id
+
+  root_directory {
+    path = "/config"
+    creation_info {
+      owner_gid   = 0
+      owner_uid   = 0
+      permissions = "755"
+    }
+  }
+
+  posix_user {
+    gid = 0
+    uid = 0
   }
 }
 
@@ -109,19 +168,38 @@ resource "aws_ecs_task_definition" "services_stack" {
     }
   }
 
-  volume {
-    name = "nginx-logs"
+    volume {
+    name = "mysql_data"
     efs_volume_configuration {
-      file_system_id = aws_efs_file_system.monitoring_data.id
-      root_directory = "/nginx-logs"
+      file_system_id          = aws_efs_file_system.monitoring_data.id
+      root_directory          = "/"
+      transit_encryption      = "ENABLED"
     }
   }
 
   volume {
-    name = "mysql-logs"
+    name = "mysql_logs"
     efs_volume_configuration {
-      file_system_id = aws_efs_file_system.monitoring_data.id
-      root_directory = "/mysql-logs"
+      file_system_id          = aws_efs_file_system.monitoring_data.id
+      root_directory          = "/"
+      transit_encryption      = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.mysql_logs.id
+        iam             = "ENABLED"
+      }
+    }
+  }
+
+  volume {
+    name = "nginx_logs"
+    efs_volume_configuration {
+      file_system_id          = aws_efs_file_system.monitoring_data.id
+      root_directory          = "/"
+      transit_encryption      = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.nginx_logs.id
+        iam             = "ENABLED"
+      }
     }
   }
 
@@ -141,7 +219,7 @@ resource "aws_ecs_task_definition" "services_stack" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = "/ecs/api-nginx-mariadb"
+          "awslogs-group"         = "/ecs/services-stack"
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "api"
         }
@@ -170,7 +248,7 @@ resource "aws_ecs_task_definition" "services_stack" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = "/ecs/api-nginx-mariadb"
+          "awslogs-group"         = "/ecs/services-stack"
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "nginx"
         }
@@ -206,20 +284,20 @@ resource "aws_ecs_task_definition" "services_stack" {
       ]
       mountPoints = [
         {
-          sourceVolume  = "efs-monitoring"
+          sourceVolume  = "mysql_data"
           containerPath = "/var/lib/mysql"
-          readOnly     = false
+          readOnly      = false
         },
         {
-          sourceVolume  = "mysql-logs"
+          sourceVolume  = "mysql_logs"
           containerPath = "/var/log/mysql"
-          readOnly     = false
+          readOnly      = false
         }
       ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = "/ecs/api-nginx-mariadb"
+          "awslogs-group"         = "/ecs/services-stack"
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "mariadb"
         }
@@ -242,34 +320,50 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
   task_role_arn            = aws_iam_role.ecs_task_role.arn
 
   volume {
-    name = "efs-monitoring"
+    name = "monitoring_data"
     efs_volume_configuration {
-      file_system_id = aws_efs_file_system.monitoring_data.id
-      root_directory = "/"
+      file_system_id          = aws_efs_file_system.monitoring_data.id
+      root_directory          = "/"
+      transit_encryption      = "ENABLED"
     }
   }
 
   volume {
-    name = "config-storage"
+    name = "config_storage"
     efs_volume_configuration {
-      file_system_id = aws_efs_file_system.monitoring_data.id
-      root_directory = "/config-storage"
+      file_system_id          = aws_efs_file_system.monitoring_data.id
+      root_directory          = "/"
+      transit_encryption      = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.config_storage.id
+        iam             = "ENABLED"
+      }
     }
   }
 
   volume {
-    name = "nginx-logs"
+    name = "nginx_logs"
     efs_volume_configuration {
-      file_system_id = aws_efs_file_system.monitoring_data.id
-      root_directory = "/nginx-logs"
+      file_system_id          = aws_efs_file_system.monitoring_data.id
+      root_directory          = "/"
+      transit_encryption      = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.nginx_logs.id
+        iam             = "ENABLED"
+      }
     }
   }
 
   volume {
-    name = "mysql-logs"
+    name = "mysql_logs"
     efs_volume_configuration {
-      file_system_id = aws_efs_file_system.monitoring_data.id
-      root_directory = "/mysql-logs"
+      file_system_id          = aws_efs_file_system.monitoring_data.id
+      root_directory          = "/"
+      transit_encryption      = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.mysql_logs.id
+        iam             = "ENABLED"
+      }
     }
   }
 
@@ -377,6 +471,11 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
           sourceVolume  = "config-storage"
           containerPath = "/etc/prometheus"
           readOnly     = true
+        },
+        {
+          sourceVolume  = "monitoring_data"
+          containerPath = "/prometheus"
+          readOnly     = false
         }
       ]
       logConfiguration = {
@@ -414,7 +513,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
           readOnly     = true
         },
         {
-          sourceVolume  = "efs-monitoring"
+          sourceVolume  = "monitoring_data"
           containerPath = "/var/lib/grafana"
           readOnly     = false
         }
@@ -456,17 +555,18 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
         {
           sourceVolume  = "config-storage"
           containerPath = "/usr/share/elasticsearch/config"
-          readOnly     = true
+          readOnly     = false
         },
         {
-          sourceVolume  = "efs-monitoring"
+          sourceVolume  = "monitoring_data"
           containerPath = "/usr/share/elasticsearch/data"
           readOnly     = false
         }
       ]
       environment = [
         { name = "discovery.type", value = "single-node" },
-        { name = "ES_JAVA_OPTS", value = "-Xms1g -Xmx1g" }
+        { name = "ES_JAVA_OPTS", value = "-Xms1g -Xmx1g" },
+        { name = "path.config", value = "/config/elk/elasticsearch" }  # Agregado para especificar la ruta de config
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -503,11 +603,11 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       mountPoints = [
         {
           sourceVolume  = "config-storage"
-          containerPath = "/usr/share/logstash/config"
+          containerPath = "/config"
           readOnly     = true
         },
         {
-          sourceVolume  = "efs-monitoring"
+          sourceVolume  = "monitoring_data"
           containerPath = "/usr/share/logstash/data"
           readOnly     = false
         },
@@ -521,6 +621,10 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
           containerPath = "/var/log/mysql"
           readOnly     = true
         }
+      ]
+      environment = [
+        { name = "path.config", value = "/config/elk/logstash" },
+        { name = "path.settings", value = "/config/elk/logstash" }
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -557,12 +661,13 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       mountPoints = [
         {
           sourceVolume  = "config-storage"
-          containerPath = "/usr/share/kibana/config"
+          containerPath = "/config"
           readOnly     = true
         }
       ]
       environment = [
-        { name = "ELASTICSEARCH_HOSTS", value = "http://localhost:9200" }
+        { name = "ELASTICSEARCH_HOSTS", value = "http://localhost:9200" },
+        { name = "KIBANA_CONFIG", value = "/config/elk/kibana/kibana.yml" }
       ]
       logConfiguration = {
         logDriver = "awslogs"
