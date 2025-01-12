@@ -46,7 +46,7 @@ resource "aws_kms_alias" "cloudwatch" {
 
 # CloudWatch Log Groups
 resource "aws_cloudwatch_log_group" "ecs_services" {
-  name              = "/ecs/api-nginx-mariadb"
+  name              = "/ecs/services-stack"
   retention_in_days = 30
   kms_key_id        = aws_kms_key.cloudwatch.arn
 
