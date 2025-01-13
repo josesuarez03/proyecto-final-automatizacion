@@ -132,6 +132,24 @@ resource "aws_efs_access_point" "nginx_logs" {
   }
 }
 
+resource "aws_efs_access_point" "mysql_data" {
+  file_system_id = aws_efs_file_system.monitoring_data.id
+
+  root_directory {
+    path = "/mysql_data"
+    creation_info {
+      owner_gid   = 999  # mysql group ID
+      owner_uid   = 999  # mysql user ID
+      permissions = "755"
+    }
+  }
+
+  posix_user {
+    gid = 999
+    uid = 999
+  }
+}
+
 resource "aws_efs_mount_target" "monitoring_mount_1" {
   file_system_id  = aws_efs_file_system.monitoring_data.id
   subnet_id       = aws_subnet.public_1.id
