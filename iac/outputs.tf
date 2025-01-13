@@ -4,7 +4,12 @@ output "ecs_cluster_name" {
 }
 
 output "ecs_task_definition_arn" {
-  value       = aws_ecs_task_definition.services_stack.arn
+  value       = aws_ecs_task_definition.api_stack.arn
+  description = "ARN of the ECS task definition"
+}
+
+output "ecs_task_definition_arn" {
+  value       = aws_ecs_task_definition.mariadb_stack.arn
   description = "ARN of the ECS task definition"
 }
 
@@ -29,7 +34,12 @@ output "service_security_group_id" {
 }
 
 output "ecs_service_name" {
-  value       = aws_ecs_service.services_stack.name
+  value       = aws_ecs_service.api_service.name
+  description = "Name of the ECS service"
+}
+
+output "ecs_service_name" {
+  value       = aws_ecs_service.mariadb_service.name
   description = "Name of the ECS service"
 }
 
