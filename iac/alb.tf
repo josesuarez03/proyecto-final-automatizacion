@@ -60,7 +60,6 @@ resource "aws_lb_listener" "http" {
   }
 }
 
-
 resource "aws_lb_listener" "mariadb" {
   load_balancer_arn = aws_lb.mariadb_nlb.arn
   port              = 3306
@@ -72,22 +71,31 @@ resource "aws_lb_listener" "mariadb" {
   }
 }
 
-# Auto Scaling Target
-resource "aws_appautoscaling_target" "ecs_services_stack" {
+# Auto Scaling Target for API Service
+resource "aws_appautoscaling_target" "ecs_api_service" {
   max_capacity       = 4
   min_capacity       = 1
-  resource_id        = "service/${aws_ecs_cluster.ecs_cluster.name}/${aws_ecs_service.services_stack.name}"
+  resource_id        = "service/${aws_ecs_cluster.ecs_cluster.name}/${aws_ecs_service.api_service.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 }
 
-# Auto Scaling Policies
-resource "aws_appautoscaling_policy" "ecs_cpu_policy_services" {
-  name               = "cpu-autoscaling-services"
+# Auto Scaling Target for MariaDB Service
+resource "aws_appautoscaling_target" "ecs_mariadb_service" {
+  max_capacity       = 1  # MariaDB no debería escalar horizontalmente
+  min_capacity       = 1
+  resource_id        = "service/${aws_ecs_cluster.ecs_cluster.name}/${aws_ecs_service.mariadb_service.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+# Auto Scaling Policies for API Service
+resource "aws_appautoscaling_policy" "ecs_cpu_policy_api" {
+  name               = "cpu-autoscaling-api"
   policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.ecs_services_stack.resource_id
-  scalable_dimension = aws_appautoscaling_target.ecs_services_stack.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.ecs_services_stack.service_namespace
+  resource_id        = aws_appautoscaling_target.ecs_api_service.resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs_api_service.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs_api_service.service_namespace
 
   target_tracking_scaling_policy_configuration {
     predefined_metric_specification {
@@ -97,12 +105,12 @@ resource "aws_appautoscaling_policy" "ecs_cpu_policy_services" {
   }
 }
 
-resource "aws_appautoscaling_policy" "ecs_memory_policy_services" {
-  name               = "memory-autoscaling-services"
+resource "aws_appautoscaling_policy" "ecs_memory_policy_api" {
+  name               = "memory-autoscaling-api"
   policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.ecs_services_stack.resource_id
-  scalable_dimension = aws_appautoscaling_target.ecs_services_stack.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.ecs_services_stack.service_namespace
+  resource_id        = aws_appautoscaling_target.ecs_api_service.resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs_api_service.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs_api_service.service_namespace
 
   target_tracking_scaling_policy_configuration {
     predefined_metric_specification {
@@ -115,9 +123,9 @@ resource "aws_appautoscaling_policy" "ecs_memory_policy_services" {
 resource "aws_appautoscaling_policy" "ecs_alb_request_count_policy" {
   name               = "alb-request-count-autoscaling"
   policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.ecs_services_stack.resource_id
-  scalable_dimension = aws_appautoscaling_target.ecs_services_stack.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.ecs_services_stack.service_namespace
+  resource_id        = aws_appautoscaling_target.ecs_api_service.resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs_api_service.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs_api_service.service_namespace
 
   target_tracking_scaling_policy_configuration {
     predefined_metric_specification {

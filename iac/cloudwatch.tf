@@ -45,8 +45,8 @@ resource "aws_kms_alias" "cloudwatch" {
 }
 
 # CloudWatch Log Groups
-resource "aws_cloudwatch_log_group" "ecs_services" {
-  name              = "/ecs/services-stack"
+resource "aws_cloudwatch_log_group" "api_stack" {
+  name              = "/ecs/api-stack"
   retention_in_days = 30
   kms_key_id        = aws_kms_key.cloudwatch.arn
 
@@ -55,6 +55,16 @@ resource "aws_cloudwatch_log_group" "ecs_services" {
     Managed_by  = "Terraform"
   }
 }
+
+resource "aws_cloudwatch_log_group" "mariadb_stack" {
+  name              = "/ecs/mariadb-stack"
+  retention_in_days = 30
+  kms_key_id        = aws_kms_key.cloudwatch.arn
+
+  tags = {
+    Environment = var.environment
+    Managed_by  = "Terraform"
+  }
 
 resource "aws_cloudwatch_log_group" "ecs_cluster" {
   name              = "/aws/ecs/monitoring-cluster"
@@ -67,9 +77,8 @@ resource "aws_cloudwatch_log_group" "ecs_cluster" {
   }
 }
 
-# CloudWatch Metric Alarms
-resource "aws_cloudwatch_metric_alarm" "ecs_cpu" {
-  alarm_name          = "ecs-cpu-utilization"
+resource "aws_cloudwatch_metric_alarm" "api_cpu" {
+  alarm_name          = "api-cpu-utilization"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = "2"
   metric_name         = "CPUUtilization"
@@ -83,11 +92,12 @@ resource "aws_cloudwatch_metric_alarm" "ecs_cpu" {
   
   dimensions = {
     ClusterName = aws_ecs_cluster.ecs_cluster.name
+    ServiceName = aws_ecs_service.api_service.name
   }
 }
 
-resource "aws_cloudwatch_metric_alarm" "ecs_memory" {
-  alarm_name          = "ecs-memory-utilization"
+resource "aws_cloudwatch_metric_alarm" "api_memory" {
+  alarm_name          = "api-memory-utilization"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = "2"
   metric_name         = "MemoryUtilization"
@@ -101,26 +111,131 @@ resource "aws_cloudwatch_metric_alarm" "ecs_memory" {
   
   dimensions = {
     ClusterName = aws_ecs_cluster.ecs_cluster.name
+    ServiceName = aws_ecs_service.api_service.name
   }
 }
 
-resource "aws_cloudwatch_metric_alarm" "ecs_running_tasks" {
-  alarm_name          = "ecs-running-tasks"
-  comparison_operator = "LessThanThreshold"
+# CloudWatch Metric Alarms for MariaDB Service
+resource "aws_cloudwatch_metric_alarm" "mariadb_cpu" {
+  alarm_name          = "mariadb-cpu-utilization"
+  comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = "2"
-  metric_name         = "RunningTaskCount"
-  namespace           = "ECS/ContainerInsights"
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/ECS"
   period              = "300"
   statistic           = "Average"
-  threshold           = "1"
-  alarm_description   = "Este alarma se dispara cuando hay menos de 1 tarea ejecutándose"
+  threshold           = "80"
+  alarm_description   = "Este alarma se dispara cuando el uso de CPU de MariaDB supera el 80%"
   alarm_actions       = [aws_sns_topic.alerts.arn]
   ok_actions          = [aws_sns_topic.alerts.arn]
   
   dimensions = {
     ClusterName = aws_ecs_cluster.ecs_cluster.name
+    ServiceName = aws_ecs_service.mariadb_service.name
   }
 }
+
+resource "aws_cloudwatch_metric_alarm" "mariadb_memory" {
+  alarm_name          = "mariadb-memory-utilization"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "MemoryUtilization"
+  namespace           = "AWS/ECS"
+  period              = "300"
+  statistic           = "Average"
+  threshold           = "80"
+  alarm_description   = "Este alarma se dispara cuando el uso de memoria de MariaDB supera el 80%"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+  ok_actions          = [aws_sns_topic.alerts.arn]
+  
+  dimensions = {
+    ClusterName = aws_ecs_cluster.ecs_cluster.name
+    ServiceName = aws_ecs_service.mariadb_service.name
+  }
+}
+
+# CloudWatch Dashboard
+resource "aws_cloudwatch_dashboard" "ecs" {
+  dashboard_name = "ECS-Monitoring"
+
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/ECS", "CPUUtilization", "ServiceName", aws_ecs_service.api_service.name, "ClusterName", aws_ecs_cluster.ecs_cluster.name],
+            [".", ".", "ServiceName", aws_ecs_service.mariadb_service.name, "ClusterName", aws_ecs_cluster.ecs_cluster.name]
+          ]
+          period = 300
+          stat   = "Average"
+          region = var.aws_region
+          title  = "CPU Utilization by Service"
+          view   = "timeSeries"
+          stacked = false
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/ECS", "MemoryUtilization", "ServiceName", aws_ecs_service.api_service.name, "ClusterName", aws_ecs_cluster.ecs_cluster.name],
+            [".", ".", "ServiceName", aws_ecs_service.mariadb_service.name, "ClusterName", aws_ecs_cluster.ecs_cluster.name]
+          ]
+          period = 300
+          stat   = "Average"
+          region = var.aws_region
+          title  = "Memory Utilization by Service"
+          view   = "timeSeries"
+          stacked = false
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 6
+        width  = 12
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", aws_lb.ecs_alb.arn_suffix]
+          ]
+          period = 300
+          stat   = "Sum"
+          region = var.aws_region
+          title  = "ALB Request Count"
+          view   = "timeSeries"
+          stacked = false
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 6
+        width  = 12
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "LoadBalancer", aws_lb.ecs_alb.arn_suffix]
+          ]
+          period = 300
+          stat   = "Sum"
+          region = var.aws_region
+          title  = "HTTP 5XX Errors"
+          view   = "timeSeries"
+          stacked = false
+        }
+      }
+    ]
+  })
 
 resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
   alarm_name          = "alb-5xx-errors"
@@ -156,124 +271,6 @@ resource "aws_cloudwatch_metric_alarm" "alb_latency" {
   dimensions = {
     LoadBalancer = aws_lb.ecs_alb.arn_suffix
   }
-}
-
-# CloudWatch Dashboard
-resource "aws_cloudwatch_dashboard" "ecs" {
-  dashboard_name = "ECS-Monitoring"
-
-  dashboard_body = jsonencode({
-    widgets = [
-      {
-        type   = "metric"
-        x      = 0
-        y      = 0
-        width  = 12
-        height = 6
-        properties = {
-          metrics = [
-            ["AWS/ECS", "CPUUtilization", "ClusterName", aws_ecs_cluster.ecs_cluster.name]
-          ]
-          period = 300
-          stat   = "Average"
-          region = var.aws_region
-          title  = "CPU Utilization"
-          view   = "timeSeries"
-          stacked = false
-        }
-      },
-      {
-        type   = "metric"
-        x      = 12
-        y      = 0
-        width  = 12
-        height = 6
-        properties = {
-          metrics = [
-            ["AWS/ECS", "MemoryUtilization", "ClusterName", aws_ecs_cluster.ecs_cluster.name]
-          ]
-          period = 300
-          stat   = "Average"
-          region = var.aws_region
-          title  = "Memory Utilization"
-          view   = "timeSeries"
-          stacked = false
-        }
-      },
-      {
-        type   = "metric"
-        x      = 0
-        y      = 6
-        width  = 12
-        height = 6
-        properties = {
-          metrics = [
-            ["ECS/ContainerInsights", "RunningTaskCount", "ClusterName", aws_ecs_cluster.ecs_cluster.name]
-          ]
-          period = 300
-          stat   = "Average"
-          region = var.aws_region
-          title  = "Running Tasks"
-          view   = "timeSeries"
-          stacked = false
-        }
-      },
-      {
-        type   = "metric"
-        x      = 12
-        y      = 6
-        width  = 12
-        height = 6
-        properties = {
-          metrics = [
-            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", aws_lb.ecs_alb.arn_suffix]
-          ]
-          period = 300
-          stat   = "Sum"
-          region = var.aws_region
-          title  = "ALB Request Count"
-          view   = "timeSeries"
-          stacked = false
-        }
-      },
-      {
-        type   = "metric"
-        x      = 0
-        y      = 12
-        width  = 12
-        height = 6
-        properties = {
-          metrics = [
-            ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "LoadBalancer", aws_lb.ecs_alb.arn_suffix]
-          ]
-          period = 300
-          stat   = "Sum"
-          region = var.aws_region
-          title  = "HTTP 5XX Errors"
-          view   = "timeSeries"
-          stacked = false
-        }
-      },
-      {
-        type   = "metric"
-        x      = 12
-        y      = 12
-        width  = 12
-        height = 6
-        properties = {
-          metrics = [
-            ["AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", aws_lb.ecs_alb.arn_suffix]
-          ]
-          period = 300
-          stat   = "Average"
-          region = var.aws_region
-          title  = "Target Response Time"
-          view   = "timeSeries"
-          stacked = false
-        }
-      }
-    ]
-  })
 }
 
 # SNS Topic para las alertas

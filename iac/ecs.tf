@@ -169,16 +169,81 @@ data "aws_ecr_repository" "docker" {
   name = "docker"
 }
 
-resource "aws_ecs_task_definition" "services_stack" {
-  family                   = "services-stack"
+# Task Definition para API y Nginx
+resource "aws_ecs_task_definition" "api_stack" {
+  family                   = "api-stack"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-  cpu                      = "2048"
-  memory                   = "4096"
+  cpu                      = "512"
+  memory                   = "1024"
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-  task_role_arn            = aws_iam_role.ecs_task_role.arn
+  task_role_arn           = aws_iam_role.ecs_task_role.arn
 
-   volume {
+  container_definitions = jsonencode([
+    {
+      name      = "api"
+      image     = "${data.aws_ecr_repository.docker.repository_url}:api"
+      cpu       = 256
+      memory    = 512
+      essential = true
+      environment = [
+        { name = "DB_HOST", value = "mariadb.monitoring.local" },
+        { name = "DB_USER", value = "admin" },
+        { name = "DB_PASSWORD", value = "1234" },
+        { name = "DB_NAME", value = "task_app" }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/api-stack"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "api"
+        }
+      }
+    },
+    {
+      name      = "nginx"
+      image     = "${data.aws_ecr_repository.docker.repository_url}:nginx"
+      cpu       = 256
+      memory    = 512
+      essential = true
+      portMappings = [
+        {
+          containerPort = 80
+          hostPort     = 80
+          protocol     = "tcp"
+        }
+      ]
+      mountPoints = [
+        {
+          sourceVolume  = "nginx_logs"
+          containerPath = "/var/log/nginx"
+          readOnly     = false
+        }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/api-stack"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "nginx"
+        }
+      }
+    }
+  ])
+}
+
+# Task Definition para MariaDB
+resource "aws_ecs_task_definition" "mariadb_stack" {
+  family                   = "mariadb-stack"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = "1024"
+  memory                   = "2048"
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn           = aws_iam_role.ecs_task_role.arn
+
+  volume {
     name = "mysql_data"
     efs_volume_configuration {
       file_system_id          = aws_efs_file_system.monitoring_data.id
@@ -202,75 +267,11 @@ resource "aws_ecs_task_definition" "services_stack" {
     }
   }
 
-
-  volume {
-    name = "nginx_logs"
-    efs_volume_configuration {
-      file_system_id          = aws_efs_file_system.monitoring_data.id
-      root_directory          = "/nginx_logs"
-      transit_encryption      = "ENABLED"
-      authorization_config {
-        access_point_id = aws_efs_access_point.nginx_logs.id
-        iam             = "ENABLED"
-      }
-    }
-  }
-
   container_definitions = jsonencode([
     {
-      name      = "api"
-      image     = "${data.aws_ecr_repository.docker.repository_url}:api"
-      cpu       = 256
-      memory    = 1024
-      essential = true
-      environment = [
-        { name = "DB_HOST", value = "mariadb.monitoring.local" },
-        { name = "DB_USER", value = "admin" },
-        { name = "DB_PASSWORD", value = "1234" },
-        { name = "DB_NAME", value = "task_app" }
-      ]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = "/ecs/services-stack"
-          "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "api"
-        }
-      }
-    },
-    {
-      name      = "nginx"
-      image     = "${data.aws_ecr_repository.docker.repository_url}:nginx"
-      cpu       = 128
-      memory    = 256
-      essential = true
-      portMappings = [
-        {
-          containerPort = 80
-          hostPort     = 80
-          protocol     = "tcp"
-        }
-      ]
-      mountPoints = [
-        {
-          sourceVolume  = "nginx_logs"
-          containerPath = "/var/log/nginx"
-          readOnly     = false
-        }
-      ]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = "/ecs/services-stack"
-          "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "nginx"
-        }
-      }
-    },
-    {
       name      = "mariadb"
-      image = "public.ecr.aws/docker/library/mariadb:10.6"
-      cpu       = 512
+      image     = "public.ecr.aws/docker/library/mariadb:10.6"
+      cpu       = 1024
       memory    = 2048
       essential = true
       command   = [
@@ -310,28 +311,23 @@ resource "aws_ecs_task_definition" "services_stack" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = "/ecs/services-stack"
+          "awslogs-group"         = "/ecs/mariadb-stack"
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "mariadb"
         }
       }
     }
   ])
-
-  tags = {
-    Name = "Services_stack"
-  }
 }
 
-resource "aws_ecs_service" "services_stack" {
-  name                               = "services-stack"
+# Servicio ECS para API/Nginx
+resource "aws_ecs_service" "api_service" {
+  name                               = "api-service"
   cluster                           = aws_ecs_cluster.ecs_cluster.id
-  task_definition                   = aws_ecs_task_definition.services_stack.arn
-  desired_count                     = 2
+  task_definition                   = aws_ecs_task_definition.api_stack.arn
+  desired_count                     = 1
   health_check_grace_period_seconds = 120
   enable_execute_command           = true
-  enable_ecs_managed_tags         = true
-  propagate_tags                  = "SERVICE"
   
   capacity_provider_strategy {
     capacity_provider = "FARGATE"
@@ -355,17 +351,36 @@ resource "aws_ecs_service" "services_stack" {
     container_name = "api"
   }
 
+  load_balancer {
+    target_group_arn = aws_lb_target_group.ecs_tg_80.arn
+    container_name   = "nginx"
+    container_port   = 80
+  }
+}
+
+# Servicio ECS para MariaDB
+resource "aws_ecs_service" "mariadb_service" {
+  name                               = "mariadb-service"
+  cluster                           = aws_ecs_cluster.ecs_cluster.id
+  task_definition                   = aws_ecs_task_definition.mariadb_stack.arn
+  desired_count                     = 1  # Solo necesitamos una instancia de MariaDB
+  enable_execute_command           = true
+  
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    base              = 1
+    weight            = 100  # No usamos SPOT para la base de datos
+  }
+
+  network_configuration {
+    subnets          = [aws_subnet.public_1.id, aws_subnet.public_2.id]
+    security_groups  = [aws_security_group.security_group.id]
+    assign_public_ip = true
+  }
+
   service_registries {
     registry_arn   = aws_service_discovery_service.mariadb.arn
     container_name = "mariadb"
-    container_port = 3306
-  }
-
-  # Load Balancer Configurations
-  load_balancer {
-  target_group_arn = aws_lb_target_group.ecs_tg_80.arn
-  container_name   = "nginx"
-  container_port   = 80
   }
 
   load_balancer {
@@ -373,12 +388,4 @@ resource "aws_ecs_service" "services_stack" {
     container_name   = "mariadb"
     container_port   = 3306
   }
-
-  depends_on = [
-    aws_iam_role_policy_attachment.ecs_task_execution_role_policy,
-    aws_lb_listener.http,
-    aws_lb_listener.mariadb,
-    aws_service_discovery_service.api,
-    aws_service_discovery_service.mariadb
-  ]
 }
