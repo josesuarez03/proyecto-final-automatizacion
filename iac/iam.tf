@@ -85,7 +85,9 @@ resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
         Resource = [
           "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:*",
           "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/*",
-          "arn:aws:kms:${var.aws_region}:${data.aws_caller_identity.current.account_id}:key/*"
+          "arn:aws:kms:${var.aws_region}:${data.aws_caller_identity.current.account_id}:key/*",
+          "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:dockerhub-creds-yOcBqO",
+          "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:dockerhub-creds-*"
         ]
       }
     ]

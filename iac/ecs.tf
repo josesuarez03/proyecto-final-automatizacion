@@ -348,9 +348,9 @@ resource "aws_ecs_task_definition" "services_stack" {
     {
       name      = "mariadb"
       image     = "mariadb:10.6"
-      repositoryCredentials = {
-      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds"
-      }
+    repositoryCredentials = {
+      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds-yOcBqO"
+    }
       cpu       = 512
       memory    = 2048
       essential = true
@@ -571,7 +571,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       name      = "nginx-exporter"
       image     = "nginx/nginx-prometheus-exporter:latest"
       repositoryCredentials = {
-      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds"
+        credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds-yOcBqO"
       }
       cpu       = 64
       memory    = 128
@@ -598,9 +598,9 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     {
       name      = "mariadb-exporter"
       image     = "prom/mysqld-exporter:latest"
-      repositoryCredentials = {
-      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds"
-      }
+    repositoryCredentials = {
+      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds-yOcBqO"
+    }
       cpu       = 64
       memory    = 128
       essential = false
@@ -626,9 +626,9 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     {
       name      = "prometheus"
       image     = "prom/prometheus:latest"
-      repositoryCredentials = {
-      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds"
-      }
+    repositoryCredentials = {
+      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds-yOcBqO"
+    }
       cpu       = 256
       memory    = 512
       essential = true
@@ -669,9 +669,9 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     {
       name      = "grafana"
       image     = "grafana/grafana:latest"
-      repositoryCredentials = {
-      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds"
-      }
+    repositoryCredentials = {
+      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds-yOcBqO"
+    }
       cpu       = 256
       memory    = 512
       essential = true
@@ -712,9 +712,9 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     {
       name      = "elasticsearch"
       image     = "elasticsearch:7.9.1"
-      repositoryCredentials = {
-      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds"
-      }
+    repositoryCredentials = {
+      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds-yOcBqO"
+    }
       cpu       = 1024
       memory    = 2048
       essential = true
@@ -765,9 +765,9 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     {
       name      = "logstash"
       image     = "logstash:7.9.1"
-      repositoryCredentials = {
-      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds"
-      }
+    repositoryCredentials = {
+      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds-yOcBqO"
+    }
       cpu       = 512
       memory    = 1024
       essential = true
@@ -826,9 +826,9 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     {
       name      = "kibana"
       image     = "kibana:7.9.1"
-      repositoryCredentials = {
-      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds"
-      }
+    repositoryCredentials = {
+      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds-yOcBqO"
+    }
       cpu       = 256
       memory    = 512
       essential = true
