@@ -65,6 +65,7 @@ resource "aws_cloudwatch_log_group" "mariadb_stack" {
     Environment = var.environment
     Managed_by  = "Terraform"
   }
+}
 
 resource "aws_cloudwatch_log_group" "ecs_cluster" {
   name              = "/aws/ecs/monitoring-cluster"
