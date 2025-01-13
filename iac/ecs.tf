@@ -375,10 +375,10 @@ resource "aws_ecs_service" "api_service" {
     container_port   = 80
   }
 
-  depends_on{
+  depends_on = [
     aws_ecs_service.mariadb_service,
     aws_service_discovery_private_dns_namespace.monitoring
-  }
+  ]
 }
 
 # Servicio ECS para MariaDB
