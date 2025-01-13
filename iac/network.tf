@@ -210,12 +210,13 @@ resource "aws_security_group" "security_group" {
   }
 
   # Comunicación interna
-  ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    self        = true
-    description = "Internal communication"
+  ingress{
+    from_port               = 0
+    to_port                 = 65535
+    protocol                = "-1"
+    source_security_group_id = aws_security_group.security_group.id
+    security_group_id       = aws_security_group.security_group.id
+    self = true
   }
 
   egress {
