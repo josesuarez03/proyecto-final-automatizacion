@@ -135,6 +135,97 @@ resource "aws_efs_access_point" "config_storage" {
   }
 }
 
+resource "aws_efs_access_point" "prometheus_config" {
+  file_system_id = aws_efs_file_system.monitoring_data.id
+
+  root_directory {
+    path = "/monitoring/prometheus"
+    creation_info {
+      owner_gid   = 0
+      owner_uid   = 0
+      permissions = "755"
+    }
+  }
+
+  posix_user {
+    gid = 0
+    uid = 0
+  }
+}
+
+resource "aws_efs_access_point" "grafana_config" {
+  file_system_id = aws_efs_file_system.monitoring_data.id
+
+  root_directory {
+    path = "/monitoring/grafana"
+    creation_info {
+      owner_gid   = 0
+      owner_uid   = 0
+      permissions = "755"
+    }
+  }
+
+  posix_user {
+    gid = 0
+    uid = 0
+  }
+}
+
+resource "aws_efs_access_point" "elasticsearch_config" {
+  file_system_id = aws_efs_file_system.monitoring_data.id
+
+  root_directory {
+    path = "/monitoring/elk/elasticsearch"
+    creation_info {
+      owner_gid   = 0
+      owner_uid   = 0
+      permissions = "755"
+    }
+  }
+
+  posix_user {
+    gid = 0
+    uid = 0
+  }
+}
+
+resource "aws_efs_access_point" "kibana_config" {
+  file_system_id = aws_efs_file_system.monitoring_data.id
+
+  root_directory {
+    path = "/monitoring/elk/kibana"
+    creation_info {
+      owner_gid   = 0
+      owner_uid   = 0
+      permissions = "755"
+    }
+  }
+
+  posix_user {
+    gid = 0
+    uid = 0
+  }
+}
+
+resource "aws_efs_access_point" "logstash_config" {
+  file_system_id = aws_efs_file_system.monitoring_data.id
+
+  root_directory {
+    path = "/monitoring/elk/logstash"
+    creation_info {
+      owner_gid   = 0
+      owner_uid   = 0
+      permissions = "755"
+    }
+  }
+
+  posix_user {
+    gid = 0
+    uid = 0
+  }
+}
+
+
 resource "aws_efs_mount_target" "monitoring_mount_1" {
   file_system_id  = aws_efs_file_system.monitoring_data.id
   subnet_id       = aws_subnet.public_1.id
@@ -208,10 +299,10 @@ resource "aws_ecs_task_definition" "services_stack" {
       name      = "api"
       image     = "${data.aws_ecr_repository.docker.repository_url}:api"
       cpu       = 256
-      memory    = 512
+      memory    = 1024
       essential = true
       environment = [
-        { name = "DB_HOST", value = "localhost" },
+        { name = "DB_HOST", value = "mariadb" },
         { name = "DB_USER", value = "admin" },
         { name = "DB_PASSWORD", value = "1234" },
         { name = "DB_NAME", value = "task_app" }
@@ -261,7 +352,7 @@ resource "aws_ecs_task_definition" "services_stack" {
       credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds"
       }
       cpu       = 512
-      memory    = 1024
+      memory    = 2048
       essential = true
       command   = [
         "--transaction-isolation=READ-COMMITTED",
@@ -370,30 +461,101 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     }
   }
 
+  volume {
+    name = "prometheus_config"
+    efs_volume_configuration {
+      file_system_id          = aws_efs_file_system.monitoring_data.id
+      transit_encryption      = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.prometheus_config.id
+        iam             = "ENABLED"
+      }
+    }
+  }
+
+  volume {
+    name = "grafana_config"
+    efs_volume_configuration {
+      file_system_id          = aws_efs_file_system.monitoring_data.id
+      transit_encryption      = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.grafana_config.id
+        iam             = "ENABLED"
+      }
+    }
+  }
+
+  volume {
+    name = "elasticsearch_config"
+    efs_volume_configuration {
+      file_system_id          = aws_efs_file_system.monitoring_data.id
+      transit_encryption      = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.elasticsearch_config.id
+        iam             = "ENABLED"
+      }
+    }
+  }
+
+  volume {
+    name = "kibana_config"
+    efs_volume_configuration {
+      file_system_id          = aws_efs_file_system.monitoring_data.id
+      transit_encryption      = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.kibana_config.id
+        iam             = "ENABLED"
+      }
+    }
+  }
+
+  volume {
+    name = "logstash_config"
+    efs_volume_configuration {
+      file_system_id          = aws_efs_file_system.monitoring_data.id
+      transit_encryption      = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.logstash_config.id
+        iam             = "ENABLED"
+      }
+    }
+  }
+
   container_definitions = jsonencode([
+    container_definitions = jsonencode([
     {
       name      = "config-init"
       image     = "amazon/aws-cli:latest"
-      repositoryCredentials = {
-        credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds"
-      }
       essential = false
       command   = [
         "sh",
         "-c",
-        <<-EOT
-        set -e
-        aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/prometheus/prometheus.yml /config/prometheus/ && \
-        aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/grafana/ /config/grafana/ --recursive && \
-        aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/elk/ /config/elk/ --recursive && \
-        echo "Configuration files copied successfully" && \
-        exit 0
-        EOT
+        "aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/prometheus/prometheus.yml /prometheus/ && aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/grafana/dashboards/node-exporter-full.json /grafana/dashboards/ && aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/grafana/provisioning/dashboards/dashboard.yaml /grafana/provisioning/dashboards/ && aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/grafana/provisioning/datasources/datasource.yaml /grafana/provisioning/datasources/ && aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/elk/elasticsearch/elasticsearch.yml /elasticsearch/ && aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/elk/kibana/kibana.yml /kibana/ && aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/elk/logstash/logstash.conf /logstash/ && aws s3 cp s3://${aws_s3_bucket.artifacts.id}/monitoring/elk/logstash/logstash.yml /logstash/"
       ]
       mountPoints = [
         {
-          sourceVolume  = "config_files"
-          containerPath = "/config"
+          sourceVolume  = "prometheus_config"
+          containerPath = "/prometheus"
+          readOnly     = false
+        },
+        {
+          sourceVolume  = "grafana_config"
+          containerPath = "/grafana"
+          readOnly     = false
+        },
+        {
+          sourceVolume  = "elasticsearch_config"
+          containerPath = "/elasticsearch"
+          readOnly     = false
+        },
+        {
+          sourceVolume  = "kibana_config"
+          containerPath = "/kibana"
+          readOnly     = false
+        },
+        {
+          sourceVolume  = "logstash_config"
+          containerPath = "/logstash"
           readOnly     = false
         }
       ]
@@ -423,7 +585,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
         }
       ]
       environment = [
-        { name = "NGINX_STATUS_URL", value = "http://localhost/metrics" }
+        { name = "NGINX_STATUS_URL", value = "http://services-stack.monitoring.local/metrics" }
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -451,7 +613,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
         }
       ]
       environment = [
-        { name = "DATA_SOURCE_NAME", value = "admin:1234@tcp(monitoring.local:3306)/task_app" }
+        { name = "DATA_SOURCE_NAME", value = "admin:1234@(mariadb:3306)/task_app" }
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -486,7 +648,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       ]
       mountPoints = [
         {
-          sourceVolume  = "config_files"
+          sourceVolume  = "prometheus_config"
           containerPath = "/etc/prometheus"
           readOnly     = true
         },
@@ -529,7 +691,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       ]
       mountPoints = [
         {
-          sourceVolume  = "config_files"
+          sourceVolume  = "grafana_config"
           containerPath = "/etc/grafana"
           readOnly     = true
         },
@@ -577,9 +739,9 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       ]
       mountPoints = [
         {
-          sourceVolume  = "config_files"
+          sourceVolume  = "elasticsearch_config"
           containerPath = "/usr/share/elasticsearch/config"
-          readOnly     = false
+          readOnly     = true
         },
         {
           sourceVolume  = "monitoring_data"
@@ -629,8 +791,8 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       ]
       mountPoints = [
         {
-          sourceVolume  = "config_files"
-          containerPath = "/config"
+          sourceVolume  = "logstash_config"
+          containerPath = "/usr/share/logstash/config"
           readOnly     = true
         },
         {
@@ -690,8 +852,8 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
       ]
       mountPoints = [
         {
-          sourceVolume  = "config_files"
-          containerPath = "/config"
+          sourceVolume  = "kibana_config"
+          containerPath = "/usr/share/kibana/config"
           readOnly     = true
         }
       ]
