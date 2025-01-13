@@ -197,7 +197,7 @@ resource "aws_ecs_task_definition" "api_stack" {
       image     = "${data.aws_ecr_repository.docker.repository_url}:api"
       cpu       = 256
       memory    = 512
-      essential = true
+      essential = false
       environment = [
         { name = "DB_HOST", value = "mariadb.monitoring.local" },
         { name = "DB_USER", value = "admin" },
@@ -230,6 +230,12 @@ resource "aws_ecs_task_definition" "api_stack" {
           containerPort = 80
           hostPort     = 80
           protocol     = "tcp"
+        }
+      ]
+      dependsOn = [
+        {
+          containerName = "api"
+          condition     = "START"
         }
       ]
       mountPoints = [
