@@ -3,14 +3,24 @@ output "ecs_cluster_name" {
   description = "Name of the ECS cluster"
 }
 
-output "ecs_task_definition_arn" {
+output "ecs_task_definition_arn_api" {
   value       = aws_ecs_task_definition.api_stack.arn
-  description = "ARN of the ECS task definition"
+  description = "ARN of the ECS task definition for API service"
 }
 
-output "ecs_task_definition_arn" {
+output "ecs_task_definition_arn_mariadb" {
   value       = aws_ecs_task_definition.mariadb_stack.arn
-  description = "ARN of the ECS task definition"
+  description = "ARN of the ECS task definition for MariaDB service"
+}
+
+output "ecs_service_name_api" {
+  value       = aws_ecs_service.api_service.name
+  description = "Name of the ECS service for API service"
+}
+
+output "ecs_service_name_mariadb" {
+  value       = aws_ecs_service.mariadb_service.name
+  description = "Name of the ECS service for MariaDB service"
 }
 
 output "bucket_name" {
@@ -31,16 +41,6 @@ output "alb_dns_name" {
 output "service_security_group_id" {
   value       = aws_security_group.security_group.id
   description = "ID of the ECS service security group"
-}
-
-output "ecs_service_name" {
-  value       = aws_ecs_service.api_service.name
-  description = "Name of the ECS service"
-}
-
-output "ecs_service_name" {
-  value       = aws_ecs_service.mariadb_service.name
-  description = "Name of the ECS service"
 }
 
 output "cloudwatch_dashboard_url" {
