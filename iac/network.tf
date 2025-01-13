@@ -190,6 +190,14 @@ resource "aws_security_group" "security_group" {
     cidr_blocks = ["0.0.0.0/0"]
     description = "Kibana"
   }
+
+  ingress {
+    from_port   = 5000
+    to_port     = 5000
+    protocol    = "tcp"
+    self        = true
+    description = "API internal access"
+  }
   
   # MariaDB
   ingress {
@@ -197,6 +205,7 @@ resource "aws_security_group" "security_group" {
     to_port     = 3306
     protocol    = "tcp"
     cidr_blocks = [var.allowed_ip]
+    self = true
     description = "MariaDB"
   }
 
