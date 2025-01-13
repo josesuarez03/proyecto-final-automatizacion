@@ -158,13 +158,12 @@ resource "aws_route_table_association" "private_2" {
   route_table_id = aws_route_table.private_2.id
 }
 
-# Security Group actualizado para Fargate
 resource "aws_security_group" "security_group" {
   name        = "ecs-fargate-sg"
   description = "Security group for ECS Fargate tasks"
   vpc_id      = aws_vpc.main.id
 
-  # Nginx
+  # Reglas de entrada (ingress)
   ingress {
     from_port   = 80
     to_port     = 80
@@ -173,7 +172,6 @@ resource "aws_security_group" "security_group" {
     description = "HTTP"
   }
 
-  # Grafana
   ingress {
     from_port   = 3000
     to_port     = 3000
@@ -182,7 +180,6 @@ resource "aws_security_group" "security_group" {
     description = "Grafana"
   }
 
-  # Kibana
   ingress {
     from_port   = 5601
     to_port     = 5601
@@ -198,27 +195,24 @@ resource "aws_security_group" "security_group" {
     self        = true
     description = "API internal access"
   }
-  
-  # MariaDB
+
   ingress {
     from_port   = 3306
     to_port     = 3306
     protocol    = "tcp"
     cidr_blocks = [var.allowed_ip]
-    self = true
     description = "MariaDB"
   }
 
-  # Comunicación interna
-  ingress{
-    from_port               = 0
-    to_port                 = 65535
-    protocol                = "-1"
-    source_security_group_id = aws_security_group.security_group.id
-    security_group_id       = aws_security_group.security_group.id
-    self = true
+  ingress {
+    from_port   = 0
+    to_port     = 65535
+    protocol    = "-1"
+    self        = true
+    description = "Internal communication"
   }
 
+  # Reglas de salida (egress)
   egress {
     from_port   = 0
     to_port     = 0
