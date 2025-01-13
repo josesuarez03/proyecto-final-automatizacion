@@ -36,30 +36,6 @@ resource "aws_lb_target_group" "ecs_tg_80" {
   }
 }
 
-resource "aws_lb_target_group" "ecs_tg_3000" {
-  name        = "ecs-tg-3000"
-  port        = 3000
-  protocol    = "HTTP"
-  target_type = "ip"
-  vpc_id      = aws_vpc.main.id
-
-  health_check {
-    path = "/api/health"
-  }
-}
-
-resource "aws_lb_target_group" "ecs_tg_5601" {
-  name        = "ecs-tg-5601"
-  port        = 5601
-  protocol    = "HTTP"
-  target_type = "ip"
-  vpc_id      = aws_vpc.main.id
-
-  health_check {
-    path = "/api/status"
-  }
-}
-
 resource "aws_lb_target_group" "ecs_tg_3306" {
   name        = "ecs-tg-3306"
   port        = 3306
@@ -84,27 +60,6 @@ resource "aws_lb_listener" "http" {
   }
 }
 
-resource "aws_lb_listener" "grafana" {
-  load_balancer_arn = aws_lb.ecs_alb.arn
-  port              = 3000
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.ecs_tg_3000.arn
-  }
-}
-
-resource "aws_lb_listener" "kibana" {
-  load_balancer_arn = aws_lb.ecs_alb.arn
-  port              = 5601
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.ecs_tg_5601.arn
-  }
-}
 
 resource "aws_lb_listener" "mariadb" {
   load_balancer_arn = aws_lb.mariadb_nlb.arn
@@ -122,14 +77,6 @@ resource "aws_appautoscaling_target" "ecs_services_stack" {
   max_capacity       = 4
   min_capacity       = 1
   resource_id        = "service/${aws_ecs_cluster.ecs_cluster.name}/${aws_ecs_service.services_stack.name}"
-  scalable_dimension = "ecs:service:DesiredCount"
-  service_namespace  = "ecs"
-}
-
-resource "aws_appautoscaling_target" "ecs_monitoring_stack" {
-  max_capacity       = 4
-  min_capacity       = 1
-  resource_id        = "service/${aws_ecs_cluster.ecs_cluster.name}/${aws_ecs_service.monitoring_stack.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 }
@@ -156,36 +103,6 @@ resource "aws_appautoscaling_policy" "ecs_memory_policy_services" {
   resource_id        = aws_appautoscaling_target.ecs_services_stack.resource_id
   scalable_dimension = aws_appautoscaling_target.ecs_services_stack.scalable_dimension
   service_namespace  = aws_appautoscaling_target.ecs_services_stack.service_namespace
-
-  target_tracking_scaling_policy_configuration {
-    predefined_metric_specification {
-      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
-    }
-    target_value = 80.0
-  }
-}
-
-resource "aws_appautoscaling_policy" "ecs_cpu_policy_monitoring" {
-  name               = "cpu-autoscaling-monitoring"
-  policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.ecs_monitoring_stack.resource_id
-  scalable_dimension = aws_appautoscaling_target.ecs_monitoring_stack.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.ecs_monitoring_stack.service_namespace
-
-  target_tracking_scaling_policy_configuration {
-    predefined_metric_specification {
-      predefined_metric_type = "ECSServiceAverageCPUUtilization"
-    }
-    target_value = 80.0
-  }
-}
-
-resource "aws_appautoscaling_policy" "ecs_memory_policy_monitoring" {
-  name               = "memory-autoscaling-monitoring"
-  policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.ecs_monitoring_stack.resource_id
-  scalable_dimension = aws_appautoscaling_target.ecs_monitoring_stack.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.ecs_monitoring_stack.service_namespace
 
   target_tracking_scaling_policy_configuration {
     predefined_metric_specification {

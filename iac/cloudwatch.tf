@@ -56,17 +56,6 @@ resource "aws_cloudwatch_log_group" "ecs_services" {
   }
 }
 
-resource "aws_cloudwatch_log_group" "ecs_monitoring" {
-  name              = "/ecs/monitoring-stack"
-  retention_in_days = 30
-  kms_key_id        = aws_kms_key.cloudwatch.arn
-
-  tags = {
-    Environment = var.environment
-    Managed_by  = "Terraform"
-  }
-}
-
 resource "aws_cloudwatch_log_group" "ecs_cluster" {
   name              = "/aws/ecs/monitoring-cluster"
   retention_in_days = 30
