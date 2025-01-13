@@ -81,7 +81,7 @@ resource "aws_service_discovery_service" "mariadb" {
   }
 }
 
-# Crear los sistemas de archivos EFS
+# EFS File System
 resource "aws_efs_file_system" "monitoring_data" {
   creation_token = "monitoring-data"
   encrypted      = true
@@ -95,22 +95,55 @@ resource "aws_efs_file_system" "monitoring_data" {
   }
 }
 
-# Create access points for different directories
+# Mount Targets
+resource "aws_efs_mount_target" "monitoring_mount_1" {
+  file_system_id  = aws_efs_file_system.monitoring_data.id
+  subnet_id       = aws_subnet.public_1.id
+  security_groups = [aws_security_group.security_group.id]
+}
+
+resource "aws_efs_mount_target" "monitoring_mount_2" {
+  file_system_id  = aws_efs_file_system.monitoring_data.id
+  subnet_id       = aws_subnet.public_2.id
+  security_groups = [aws_security_group.security_group.id]
+}
+
+# Access Points
+resource "aws_efs_access_point" "mysql_data" {
+  file_system_id = aws_efs_file_system.monitoring_data.id
+
+  root_directory {
+    path = "/mysql_data"
+    creation_info {
+      owner_gid   = 999
+      owner_uid   = 999
+      permissions = "755"
+    }
+  }
+
+  posix_user {
+    gid = 999
+    uid = 999
+    secondary_gids = [999]
+  }
+}
+
 resource "aws_efs_access_point" "mysql_logs" {
   file_system_id = aws_efs_file_system.monitoring_data.id
 
   root_directory {
     path = "/mysql_logs"
     creation_info {
-      owner_gid   = 0
-      owner_uid   = 0
+      owner_gid   = 999
+      owner_uid   = 999
       permissions = "755"
     }
   }
 
   posix_user {
-    gid = 0
-    uid = 0
+    gid = 999
+    uid = 999
+    secondary_gids = [999]
   }
 }
 
@@ -132,36 +165,6 @@ resource "aws_efs_access_point" "nginx_logs" {
   }
 }
 
-resource "aws_efs_access_point" "mysql_data" {
-  file_system_id = aws_efs_file_system.monitoring_data.id
-
-  root_directory {
-    path = "/mysql_data"
-    creation_info {
-      owner_gid   = 999  # mysql group ID
-      owner_uid   = 999  # mysql user ID
-      permissions = "755"
-    }
-  }
-
-  posix_user {
-    gid = 999
-    uid = 999
-  }
-}
-
-resource "aws_efs_mount_target" "monitoring_mount_1" {
-  file_system_id  = aws_efs_file_system.monitoring_data.id
-  subnet_id       = aws_subnet.public_1.id
-  security_groups = [aws_security_group.security_group.id]
-}
-
-resource "aws_efs_mount_target" "monitoring_mount_2" {
-  file_system_id  = aws_efs_file_system.monitoring_data.id
-  subnet_id       = aws_subnet.public_2.id
-  security_groups = [aws_security_group.security_group.id]
-}
-
 data "aws_ecr_repository" "docker" {
   name = "docker"
 }
@@ -175,20 +178,15 @@ resource "aws_ecs_task_definition" "services_stack" {
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_role.arn
 
-  volume {
-    name = "efs_monitoring"
-    efs_volume_configuration {
-      file_system_id = aws_efs_file_system.monitoring_data.id
-      root_directory = "/"
-    }
-  }
-
-  volume {
+   volume {
     name = "mysql_data"
     efs_volume_configuration {
       file_system_id          = aws_efs_file_system.monitoring_data.id
-      root_directory          = "/mysql_data" # Cambia a un subdirectorio único
       transit_encryption      = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.mysql_data.id
+        iam             = "ENABLED"
+      }
     }
   }
 
@@ -196,7 +194,6 @@ resource "aws_ecs_task_definition" "services_stack" {
     name = "mysql_logs"
     efs_volume_configuration {
       file_system_id          = aws_efs_file_system.monitoring_data.id
-      root_directory          = "/mysql_logs" # Cambia a un subdirectorio único
       transit_encryption      = "ENABLED"
       authorization_config {
         access_point_id = aws_efs_access_point.mysql_logs.id
@@ -204,6 +201,7 @@ resource "aws_ecs_task_definition" "services_stack" {
       }
     }
   }
+
 
   volume {
     name = "nginx_logs"
@@ -226,7 +224,7 @@ resource "aws_ecs_task_definition" "services_stack" {
       memory    = 1024
       essential = true
       environment = [
-        { name = "DB_HOST", value = "mariadb" },
+        { name = "DB_HOST", value = "mariadb.monitoring.local" },
         { name = "DB_USER", value = "admin" },
         { name = "DB_PASSWORD", value = "1234" },
         { name = "DB_NAME", value = "task_app" }
@@ -357,6 +355,12 @@ resource "aws_ecs_service" "services_stack" {
     container_name = "api"
   }
 
+  service_registries {
+    registry_arn   = aws_service_discovery_service.mariadb.arn
+    container_name = "mariadb"
+    container_port = 3306
+  }
+
   # Load Balancer Configurations
   load_balancer {
   target_group_arn = aws_lb_target_group.ecs_tg_80.arn
@@ -373,6 +377,8 @@ resource "aws_ecs_service" "services_stack" {
   depends_on = [
     aws_iam_role_policy_attachment.ecs_task_execution_role_policy,
     aws_lb_listener.http,
-    aws_lb_listener.mariadb
+    aws_lb_listener.mariadb,
+    aws_service_discovery_service.api,
+    aws_service_discovery_service.mariadb
   ]
 }
