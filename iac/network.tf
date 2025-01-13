@@ -206,7 +206,7 @@ resource "aws_security_group" "security_group" {
 
   ingress {
     from_port   = 0
-    to_port     = 65535
+    to_port     = 0
     protocol    = "-1"
     self        = true
     description = "Internal communication"
