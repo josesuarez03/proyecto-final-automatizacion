@@ -522,7 +522,6 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
   }
 
   container_definitions = jsonencode([
-    container_definitions = jsonencode([
     {
       name      = "config-init"
       image     = "amazon/aws-cli:latest"
