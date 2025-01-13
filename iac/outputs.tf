@@ -4,7 +4,7 @@ output "ecs_cluster_name" {
 }
 
 output "ecs_task_definition_arn" {
-  value       = aws_ecs_task_definition.monitoring_stack.arn
+  value       = aws_ecs_task_definition.services_stack.arn
   description = "ARN of the ECS task definition"
 }
 
@@ -29,7 +29,7 @@ output "service_security_group_id" {
 }
 
 output "ecs_service_name" {
-  value       = aws_ecs_service.monitoring_stack.name
+  value       = aws_ecs_service.services_stack.name
   description = "Name of the ECS service"
 }
 
