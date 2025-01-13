@@ -204,6 +204,12 @@ resource "aws_ecs_task_definition" "api_stack" {
         { name = "DB_PASSWORD", value = "1234" },
         { name = "DB_NAME", value = "task_app" }
       ]
+      portMappings = [
+      {
+        containerPort = 5000
+        protocol      = "tcp"
+      }
+    ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
