@@ -331,7 +331,7 @@ resource "aws_ecs_service" "services_stack" {
   network_configuration {
     subnets          = [aws_subnet.private_1.id, aws_subnet.private_2.id]
     security_groups  = [aws_security_group.security_group.id]
-    assign_public_ip = false
+    assign_public_ip = true
   }
 
   service_registries {
