@@ -179,6 +179,18 @@ resource "aws_ecs_task_definition" "api_stack" {
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn           = aws_iam_role.ecs_task_role.arn
 
+  volume {
+    name = "nginx_logs"
+    efs_volume_configuration {
+      file_system_id          = aws_efs_file_system.monitoring_data.id
+      transit_encryption      = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.nginx_logs.id
+        iam             = "ENABLED"
+      }
+    }
+  }
+
   container_definitions = jsonencode([
     {
       name      = "api"
