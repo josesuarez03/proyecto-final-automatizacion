@@ -347,10 +347,7 @@ resource "aws_ecs_task_definition" "services_stack" {
     },
     {
       name      = "mariadb"
-      image     = "mariadb:10.6"
-    repositoryCredentials = {
-      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds-yOcBqO"
-    }
+      image = "public.ecr.aws/docker/library/mariadb:10.6"
       cpu       = 512
       memory    = 2048
       essential = true
@@ -524,7 +521,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
   container_definitions = jsonencode([
     {
       name      = "config-init"
-      image     = "amazon/aws-cli:latest"
+      image     = "public.ecr.aws/aws-cli/aws-cli:latest"
       essential = false
       command   = [
         "sh",
@@ -569,10 +566,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     },
     {
       name      = "nginx-exporter"
-      image     = "nginx/nginx-prometheus-exporter:latest"
-      repositoryCredentials = {
-        credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds-yOcBqO"
-      }
+      image = "public.ecr.aws/nginx/nginx-prometheus-exporter:latest"
       cpu       = 64
       memory    = 128
       essential = false
@@ -597,10 +591,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     },
     {
       name      = "mariadb-exporter"
-      image     = "prom/mysqld-exporter:latest"
-    repositoryCredentials = {
-      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds-yOcBqO"
-    }
+      image = "public.ecr.aws/bitnami/mysqld-exporter:latest"
       cpu       = 64
       memory    = 128
       essential = false
@@ -625,10 +616,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     },
     {
       name      = "prometheus"
-      image     = "prom/prometheus:latest"
-    repositoryCredentials = {
-      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds-yOcBqO"
-    }
+      image = "public.ecr.aws/bitnami/prometheus:latest"
       cpu       = 256
       memory    = 512
       essential = true
@@ -668,10 +656,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     },
     {
       name      = "grafana"
-      image     = "grafana/grafana:latest"
-    repositoryCredentials = {
-      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds-yOcBqO"
-    }
+      image = "public.ecr.aws/grafana/grafana:latest"
       cpu       = 256
       memory    = 512
       essential = true
@@ -711,10 +696,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     },
     {
       name      = "elasticsearch"
-      image     = "elasticsearch:7.9.1"
-    repositoryCredentials = {
-      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds-yOcBqO"
-    }
+      image = "public.ecr.aws/bitnami/elasticsearch:7.9.1"
       cpu       = 1024
       memory    = 2048
       essential = true
@@ -764,10 +746,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     },
     {
       name      = "logstash"
-      image     = "logstash:7.9.1"
-    repositoryCredentials = {
-      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds-yOcBqO"
-    }
+      image = "public.ecr.aws/bitnami/logstash:7.9.1"
       cpu       = 512
       memory    = 1024
       essential = true
@@ -825,10 +804,7 @@ resource "aws_ecs_task_definition" "monitoring_stack" {
     },
     {
       name      = "kibana"
-      image     = "kibana:7.9.1"
-    repositoryCredentials = {
-      credentialsParameter = "arn:aws:secretsmanager:${var.aws_region}:375943871844:secret:dockerhub-creds-yOcBqO"
-    }
+      image = "public.ecr.aws/bitnami/kibana:7.9.1"
       cpu       = 256
       memory    = 512
       essential = true
