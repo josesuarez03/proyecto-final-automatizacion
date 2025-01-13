@@ -208,7 +208,7 @@ resource "aws_ecs_task_definition" "services_stack" {
       memory    = 1024
       essential = true
       environment = [
-        { name = "DB_HOST", value = "mariadb.monitoring.local" },
+        { name = "DB_HOST", value = "localhost" },
         { name = "DB_USER", value = "admin" },
         { name = "DB_PASSWORD", value = "1234" },
         { name = "DB_NAME", value = "task_app" }
@@ -332,16 +332,9 @@ resource "aws_ecs_service" "services_stack" {
     subnets          = [aws_subnet.private_1.id, aws_subnet.private_2.id]
     security_groups  = [aws_security_group.security_group.id]
     assign_public_ip = false
-    enable_dns_hostnames = true
-    enable_dns_support   = true
   }
 
   service_registries {
-    registry_arn   = aws_service_discovery_service.mariadb.arn
-    container_name = "mariadb"
-  }
-
-  service_registries{
     registry_arn   = aws_service_discovery_service.api.arn
     container_name = "api"
   }
