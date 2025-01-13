@@ -237,6 +237,7 @@ resource "aws_cloudwatch_dashboard" "ecs" {
       }
     ]
   })
+}
 
 resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
   alarm_name          = "alb-5xx-errors"
