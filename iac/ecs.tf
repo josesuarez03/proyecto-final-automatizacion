@@ -169,7 +169,7 @@ resource "aws_ecs_task_definition" "services_stack" {
     name = "mysql_data"
     efs_volume_configuration {
       file_system_id          = aws_efs_file_system.monitoring_data.id
-      root_directory          = "/"
+      root_directory          = "/mysql_data" # Cambia a un subdirectorio único
       transit_encryption      = "ENABLED"
     }
   }
@@ -178,7 +178,7 @@ resource "aws_ecs_task_definition" "services_stack" {
     name = "mysql_logs"
     efs_volume_configuration {
       file_system_id          = aws_efs_file_system.monitoring_data.id
-      root_directory          = "/"
+      root_directory          = "/mysql_logs" # Cambia a un subdirectorio único
       transit_encryption      = "ENABLED"
       authorization_config {
         access_point_id = aws_efs_access_point.mysql_logs.id
@@ -191,7 +191,7 @@ resource "aws_ecs_task_definition" "services_stack" {
     name = "nginx_logs"
     efs_volume_configuration {
       file_system_id          = aws_efs_file_system.monitoring_data.id
-      root_directory          = "/"
+      root_directory          = "/nginx_logs"
       transit_encryption      = "ENABLED"
       authorization_config {
         access_point_id = aws_efs_access_point.nginx_logs.id
@@ -208,7 +208,7 @@ resource "aws_ecs_task_definition" "services_stack" {
       memory    = 1024
       essential = true
       environment = [
-        { name = "DB_HOST", value = "localhost" },
+        { name = "DB_HOST", value = "mariadb" },
         { name = "DB_USER", value = "admin" },
         { name = "DB_PASSWORD", value = "1234" },
         { name = "DB_NAME", value = "task_app" }
