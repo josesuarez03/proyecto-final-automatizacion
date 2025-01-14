@@ -8,7 +8,7 @@ RUN mkdir -p /etc/grafana/provisioning/datasources \
 # Copiar archivos de configuración
 COPY provisioning/datasources/datasource.yaml /etc/grafana/provisioning/datasources/
 COPY provisioning/dashboards/dashboard.yaml /etc/grafana/provisioning/dashboards/
-COPY dashboards/node-metrics.json /etc/grafana/dashboards/
+COPY dashboards/node-exporter-full.json /etc/grafana/dashboards/
 
 # Establecer permisos correctos
 RUN chown -R grafana:grafana /etc/grafana /var/lib/grafana
