@@ -346,7 +346,7 @@ resource "aws_ecs_task_definition" "api_stack" {
       environment = [
         {
           name  = "DATA_SOURCE_NAME"
-          value = "admin:1234@(mariadb.monitoring.local:3306)/task_app"
+          value = "admin:1234@tcp(mariadb.monitoring.local:3306)/task_app"
         }
       ]
       portMappings = [
@@ -358,15 +358,10 @@ resource "aws_ecs_task_definition" "api_stack" {
     },
     {
       name      = "prometheus"
-      image     = "public.ecr.aws/ubuntu/prometheus:2.53.3-24.04_stable"
+      image     = "${data.aws_ecr_repository.docker.repository_url}:prometheus"
       cpu       = 512
       memory    = 1024
       essential = true
-      command   = [
-        "sh",
-        "-c",
-        "aws s3 cp s3://artifacts-${data.aws_caller_identity.current.account_id}/monitoring/prometheus/prometheus.yml /etc/prometheus/prometheus.yml && chmod 644 /etc/prometheus/prometheus.yml && prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus"
-      ]
       portMappings = [
         {
           containerPort = 9090
@@ -391,15 +386,10 @@ resource "aws_ecs_task_definition" "api_stack" {
     },
     {
       name      = "grafana"
-      image     = "public.ecr.aws/ubuntu/grafana:11.0.0-22.04_stable"
+      image     = ${data.aws_ecr_repository.docker.repository_url}:grafana
       cpu       = 512
       memory    = 1024
       essential = true
-      command   = [
-        "sh",
-        "-c",
-        "aws s3 cp s3://artifacts-${data.aws_caller_identity.current.account_id}/monitoring/grafana/dashboards/ /var/lib/grafana/dashboards/ --recursive && aws s3 cp s3://artifacts-${data.aws_caller_identity.current.account_id}/monitoring/grafana/provisioning/ /etc/grafana/provisioning/ --recursive && chmod -R 777 /var/lib/grafana/dashboards/ /etc/grafana/provisioning/ && grafana-server --homepath=/usr/share/grafana"
-      ]
       portMappings = [
         {
           containerPort = 3000
