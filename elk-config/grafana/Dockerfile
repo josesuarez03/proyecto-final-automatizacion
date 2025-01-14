@@ -11,7 +11,8 @@ COPY provisioning/dashboards/dashboard.yaml /etc/grafana/provisioning/dashboards
 COPY dashboards/node-exporter-full.json /etc/grafana/dashboards/
 
 # Establecer permisos correctos
-RUN chown -R grafana:grafana /etc/grafana /var/lib/grafana
+RUN chown -R grafana:grafana /etc/grafana \
+    && chmod -R 775 /etc/grafana
 
 EXPOSE 3000
 
