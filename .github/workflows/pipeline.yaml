@@ -60,6 +60,20 @@ jobs:
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:api-$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:api
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:api
 
+      - name: Build and push Docker image for grafana
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:grafana-$IMAGE_TAG ./elk-config/grafana
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:grafana-$IMAGE_TAG
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:grafana-$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:grafana
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:grafana
+
+      - name: Build and push Docker image for prometheus
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:prometheus-$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:prometheus-$IMAGE_TAG
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:prometheus-$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:prometheus
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:prometheus
+
       - name: Build Frontend App
         run: |
           cd frontend
