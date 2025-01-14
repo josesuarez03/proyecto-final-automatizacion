@@ -165,6 +165,43 @@ resource "aws_efs_access_point" "nginx_logs" {
   }
 }
 
+resource "aws_efs_access_point" "prometheus_data" {
+  file_system_id = aws_efs_file_system.monitoring_data.id
+
+  root_directory {
+    path = "/prometheus_data"
+    creation_info {
+      owner_gid   = 1000
+      owner_uid   = 1000
+      permissions = "755"
+    }
+  }
+
+  posix_user {
+    gid = 1000
+    uid = 1000
+  }
+}
+
+resource "aws_efs_access_point" "grafana_data" {
+  file_system_id = aws_efs_file_system.monitoring_data.id
+
+  root_directory {
+    path = "/grafana_data"
+    creation_info {
+      owner_gid   = 1000
+      owner_uid   = 1000
+      permissions = "755"
+    }
+  }
+
+  posix_user {
+    gid = 1000
+    uid = 1000
+  }
+}
+
+
 data "aws_ecr_repository" "docker" {
   name = "docker"
 }
@@ -173,20 +210,44 @@ data "aws_ecr_repository" "docker" {
 resource "aws_ecs_task_definition" "api_stack" {
   family                   = "api-stack"
   requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  cpu                      = "512"
-  memory                   = "1024"
-  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  network_mode            = "awsvpc"
+  cpu                     = "2048"  # Increased CPU for additional containers
+  memory                  = "4096"  # Increased memory for additional containers
+  execution_role_arn      = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn           = aws_iam_role.ecs_task_role.arn
 
   volume {
     name = "nginx_logs"
     efs_volume_configuration {
-      file_system_id          = aws_efs_file_system.monitoring_data.id
-      transit_encryption      = "ENABLED"
+      file_system_id     = aws_efs_file_system.monitoring_data.id
+      transit_encryption = "ENABLED"
       authorization_config {
         access_point_id = aws_efs_access_point.nginx_logs.id
-        iam             = "ENABLED"
+        iam            = "ENABLED"
+      }
+    }
+  }
+
+  volume {
+    name = "prometheus_data"
+    efs_volume_configuration {
+      file_system_id     = aws_efs_file_system.monitoring_data.id
+      transit_encryption = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.prometheus_data.id
+        iam            = "ENABLED"
+      }
+    }
+  }
+
+  volume {
+    name = "grafana_data"
+    efs_volume_configuration {
+      file_system_id     = aws_efs_file_system.monitoring_data.id
+      transit_encryption = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.grafana_data.id
+        iam            = "ENABLED"
       }
     }
   }
@@ -205,11 +266,11 @@ resource "aws_ecs_task_definition" "api_stack" {
         { name = "DB_NAME", value = "task_app" }
       ]
       portMappings = [
-      {
-        containerPort = 5000
-        protocol      = "tcp"
-      }
-    ]
+        {
+          containerPort = 5000
+          protocol     = "tcp"
+        }
+      ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -235,7 +296,7 @@ resource "aws_ecs_task_definition" "api_stack" {
       dependsOn = [
         {
           containerName = "api"
-          condition     = "START"
+          condition    = "START"
         }
       ]
       mountPoints = [
@@ -251,6 +312,113 @@ resource "aws_ecs_task_definition" "api_stack" {
           "awslogs-group"         = "/ecs/api-stack"
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "nginx"
+        }
+      }
+    },
+    {
+      name      = "nginx-exporter"
+      image     = "public.ecr.aws/nginx/nginx-prometheus-exporter:latest"
+      cpu       = 128
+      memory    = 256
+      essential = false
+      command   = [
+        "-nginx.scrape-uri=http://localhost/nginx_status"
+      ]
+      portMappings = [
+        {
+          containerPort = 9113
+          protocol     = "tcp"
+        }
+      ]
+      dependsOn = [
+        {
+          containerName = "nginx"
+          condition    = "START"
+        }
+      ]
+    },
+    {
+      name      = "mariadb-exporter"
+      image     = "public.ecr.aws/bitnami/mysqld-exporter:latest"
+      cpu       = 128
+      memory    = 256
+      essential = false
+      environment = [
+        {
+          name  = "DATA_SOURCE_NAME"
+          value = "admin:1234@(mariadb.monitoring.local:3306)/task_app"
+        }
+      ]
+      portMappings = [
+        {
+          containerPort = 9104
+          protocol     = "tcp"
+        }
+      ]
+    },
+    {
+      name      = "prometheus"
+      image     = "public.ecr.aws/ubuntu/prometheus:2.53.3-24.04_stable"
+      cpu       = 512
+      memory    = 1024
+      essential = true
+      command   = [
+        "sh",
+        "-c",
+        "aws s3 cp s3://artifacts-${data.aws_caller_identity.current.account_id}/monitoring/prometheus/prometheus.yml /etc/prometheus/prometheus.yml && chmod 644 /etc/prometheus/prometheus.yml && prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus"
+      ]
+      portMappings = [
+        {
+          containerPort = 9090
+          protocol     = "tcp"
+        }
+      ]
+      mountPoints = [
+        {
+          sourceVolume  = "prometheus_data"
+          containerPath = "/prometheus"
+          readOnly     = false
+        }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/api-stack"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "prometheus"
+        }
+      }
+    },
+    {
+      name      = "grafana"
+      image     = "public.ecr.aws/ubuntu/grafana:11.0.0-22.04_stable"
+      cpu       = 512
+      memory    = 1024
+      essential = true
+      command   = [
+        "sh",
+        "-c",
+        "aws s3 cp s3://artifacts-${data.aws_caller_identity.current.account_id}/monitoring/grafana/dashboards/ /var/lib/grafana/dashboards/ --recursive && aws s3 cp s3://artifacts-${data.aws_caller_identity.current.account_id}/monitoring/grafana/provisioning/ /etc/grafana/provisioning/ --recursive && chmod -R 777 /var/lib/grafana/dashboards/ /etc/grafana/provisioning/ && grafana-server --homepath=/usr/share/grafana"
+      ]
+      portMappings = [
+        {
+          containerPort = 3000
+          protocol     = "tcp"
+        }
+      ]
+      mountPoints = [
+        {
+          sourceVolume  = "grafana_data"
+          containerPath = "/var/lib/grafana"
+          readOnly     = false
+        }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/api-stack"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "grafana"
         }
       }
     }
@@ -381,9 +549,24 @@ resource "aws_ecs_service" "api_service" {
     container_port   = 80
   }
 
+  load_balancer {
+    target_group_arn = aws_lb_target_group.grafana_tg.arn
+    container_name   = "grafana"
+    container_port   = 3000
+  }
+
+    load_balancer {
+    target_group_arn = aws_lb_target_group.prometheus_tg.arn
+    container_name   = "prometheus"
+    container_port   = 9090
+  }
+
   depends_on = [
     aws_ecs_service.mariadb_service,
-    aws_service_discovery_private_dns_namespace.monitoring
+    aws_service_discovery_private_dns_namespace.monitoring,
+    aws_lb_listener.http,
+    aws_lb_listener.grafana_listener,
+    aws_lb_listener.prometheus_listener
   ]
 }
 

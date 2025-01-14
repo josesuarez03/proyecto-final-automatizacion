@@ -23,6 +23,67 @@ resource "aws_lb" "mariadb_nlb" {
   }
 }
 
+# Target Group para Grafana
+resource "aws_lb_target_group" "grafana_tg" {
+  name        = "grafana-tg"
+  port        = 3000
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = aws_vpc.main.id
+
+  health_check {
+    path                = "/login"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 3
+    unhealthy_threshold = 2
+    matcher             = "200-299"
+  }
+}
+
+# Target Group para Prometheus
+resource "aws_lb_target_group" "prometheus_tg" {
+  name        = "prometheus-tg"
+  port        = 9090
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = aws_vpc.main.id
+
+  health_check {
+    path                = "/metrics"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 3
+    unhealthy_threshold = 2
+    matcher             = "200-299"
+  }
+}
+
+# Listener para Grafana
+resource "aws_lb_listener" "grafana_listener" {
+  load_balancer_arn = aws_lb.ecs_alb.arn # Corregido para usar ecs_alb
+  port              = 3000
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.grafana_tg.arn
+  }
+}
+
+# Listener para Prometheus
+resource "aws_lb_listener" "prometheus_listener" {
+  load_balancer_arn = aws_lb.ecs_alb.arn # Corregido para usar ecs_alb
+  port              = 9090
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.prometheus_tg.arn
+  }
+}
+
+
 # Target Groups
 resource "aws_lb_target_group" "ecs_tg_80" {
   name        = "ecs-tg-80"
