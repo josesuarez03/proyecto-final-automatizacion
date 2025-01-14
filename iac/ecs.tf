@@ -336,6 +336,14 @@ resource "aws_ecs_task_definition" "api_stack" {
           condition    = "START"
         }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/api-stack"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "grafana"
+        }
+      }
     },
     {
       name      = "mariadb-exporter"
@@ -355,6 +363,14 @@ resource "aws_ecs_task_definition" "api_stack" {
           protocol     = "tcp"
         }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/api-stack"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "grafana"
+        }
+      }
     },
     {
       name      = "prometheus"
