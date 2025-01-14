@@ -386,7 +386,7 @@ resource "aws_ecs_task_definition" "api_stack" {
     },
     {
       name      = "grafana"
-      image     = ${data.aws_ecr_repository.docker.repository_url}:grafana
+      image     = "${data.aws_ecr_repository.docker.repository_url}:grafana"
       cpu       = 512
       memory    = 1024
       essential = true
